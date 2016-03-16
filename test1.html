@@ -47,55 +47,6 @@
         </p>
         </div>
 	<script>
-/*
-var objText = models.deformed();
-
-function normalMatrixToGeometry(hemesh, N, s) {
-	s = s||1;
-	var geo = new THREE.Geometry();
-	for(var v=0; v < hemesh.vertexAdjacency.length; ++v) {
-		if(hemesh.halfedgeValid(hemesh.vertexHalfedge(v))) {
-			var p = hemesh.vertexPoint(v);
-			var n = new THREE.Vector3(N[v][0]*s, N[v][1]*s, N[v][2]*s);
-			geo.vertices.push(p);
-			geo.vertices.push(n.add(p));
-		}
-	}
-	return geo;
-}
-
-
-// Create the halfedge mesh from an OBJ
-var hemesh = new Hemesh();
-hemesh.fromOBJ(objText);
-hemesh.normalize();
-
-var wireframeLines = hemesh.toWireframeGeometry();
-hemesh.triangulate();
-
-
-// Generate the normals from the Laplacian
-var L = hemesh.laplacian();
-var N = hemesh.meanCurvatureNormals(L);
-
-// Create Three.js representation
-var geo = hemesh.toGeometry();
-var wireframeMtl = new THREE.MeshBasicMaterial({
-	color: 0x111111,
-	wireframe: true,
-});
-var mesh = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({
-	color: 0xd9d9d9,
-	polygonOffset: true,
-	polygonOffsetFactor: 1,
-	polygonOffsetUnits: 0.1
-}));
-var wireframeMesh = new THREE.Mesh(geo, wireframeMtl);
-var normals = new THREE.Line(normalMatrixToGeometry(hemesh, N, 0.1), new THREE.LineBasicMaterial({
-	color: 0x0088ff
-}), THREE.LinePieces);
-
-*/
         var mouse = new THREE.Vector2();
         var isDrawing, points = [ ], pointSample = [ ];
         var setup = new ThreeSetup();
