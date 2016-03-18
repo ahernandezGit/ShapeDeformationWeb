@@ -47,9 +47,58 @@
         </p>
         </div>
 	<script>
+/*
+var objText = models.deformed();
 
+function normalMatrixToGeometry(hemesh, N, s) {
+	s = s||1;
+	var geo = new THREE.Geometry();
+	for(var v=0; v < hemesh.vertexAdjacency.length; ++v) {
+		if(hemesh.halfedgeValid(hemesh.vertexHalfedge(v))) {
+			var p = hemesh.vertexPoint(v);
+			var n = new THREE.Vector3(N[v][0]*s, N[v][1]*s, N[v][2]*s);
+			geo.vertices.push(p);
+			geo.vertices.push(n.add(p));
+		}
+	}
+	return geo;
+}
+
+
+// Create the halfedge mesh from an OBJ
+var hemesh = new Hemesh();
+hemesh.fromOBJ(objText);
+hemesh.normalize();
+
+var wireframeLines = hemesh.toWireframeGeometry();
+hemesh.triangulate();
+
+
+// Generate the normals from the Laplacian
+var L = hemesh.laplacian();
+var N = hemesh.meanCurvatureNormals(L);
+
+// Create Three.js representation
+var geo = hemesh.toGeometry();
+var wireframeMtl = new THREE.MeshBasicMaterial({
+	color: 0x111111,
+	wireframe: true,
+});
+var mesh = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({
+	color: 0xd9d9d9,
+	polygonOffset: true,
+	polygonOffsetFactor: 1,
+	polygonOffsetUnits: 0.1
+}));
+var wireframeMesh = new THREE.Mesh(geo, wireframeMtl);
+var normals = new THREE.Line(normalMatrixToGeometry(hemesh, N, 0.1), new THREE.LineBasicMaterial({
+	color: 0x0088ff
+}), THREE.LinePieces);
+
+*/
         var mouse = new THREE.Vector2();
-        var isDrawing, points = [ ], pointSample = [ ];
+        var sqrt3=1.732050808;
+        var isDrawing=false, points = [ ], pointSample = [ ];
         var setup = new ThreeSetup();
         var LastPoint,CurrentPoint;
         var sizeGrid=document.getElementById("sizeGridBar").value;
@@ -63,9 +112,11 @@
         var width,height,starx,stary;                
         //array of grid points
         var gridPointsArray=[];
+        var gridI=[];
         var gridgeometry = new THREE.Object3D();
         var gridBoundary=[];
         gridgeometry.name="Grid2D";
+        LineSample.name="LineSample";
         function mousePosition3D(event){
             // calculate mouse position in normalized device coordinates
             // (-1 to +1) for both components
@@ -99,11 +150,13 @@
             //setup.scene.add( line );
         }
         function onMouseDown () {
+            clearScene();
             event=d3.event;
             isDrawing = true;
             setup.scene.add( LineStroke );
             LastPoint=mousePosition3D(event);
             points.push(LastPoint);  
+            //render();
         }
     
         function onMouseUp () {
@@ -114,6 +167,7 @@
              setup.scene.remove( LineStroke );
              LineStroke = new THREE.Object3D();
              points=[];
+             //gridgeometry = new THREE.Object3D();
              DrawGrid();
         }
         function Resample(input_points) {
@@ -128,12 +182,13 @@
                 var curve=new THREE.CatmullRomCurve3(sample);
                 var geometrySample=new THREE.Geometry();
                 curve.closed=true;
-                var numberPoints=Math.round(curve.getLength()/(1.5*sizeGrid));
+                var numberPoints=Math.round(curve.getLength()/(sizeGrid));
                 //pointSample=curve.getPoints(Math.floor(2*input_points.length/5));
                 pointSample=curve.getSpacedPoints(numberPoints);
+                for(var i=0;i<pointSample.length;i++){
+                    pointSample[i].z=0.0;
+                }
                 geometrySample.vertices=pointSample;
-                console.log(pointSample);
-                console.log(geometrySample);
                 //geometrySample.vertices.push(geometrySample.vertices[0]);
                 if(LineSample!=undefined){
                     setup.scene.remove(LineSample);
@@ -150,6 +205,10 @@
         function updateSizeGrid(newVal){
             sizeGrid=newVal;
             gridgeometry=new THREE.Object3D();
+            for( var i = setup.scene.children.length - 1; i >= 0; i--) { 
+                 var  obj = setup.scene.children[i];
+                 setup.scene.remove(obj);
+            }
             DrawGrid();
             document.getElementById("valueexample").innerHTML=newVal;
         }
@@ -178,23 +237,31 @@
                     y_min=pointSample[i].y;
                 }
             }
-            var gridx=(x_max-x_min)/sizeGrid;
+            var gridx=2*(x_max-x_min)/(sqrt3*sizeGrid);
             var gridy=(y_max-y_min)/sizeGrid;
             width=Math.floor(gridx)+1;
-            height=Math.floor(gridy)+1;
+            height=Math.floor(gridy)+2;
             console.log(width);
             console.log(height);
             var geoedges =[];
-            starx=x_min-(width*sizeGrid-(x_max-x_min))/2;
-            stary=y_min-(height*sizeGrid-(y_max-y_min))/2;
+            starx=x_min-(width*sqrt3*sizeGrid/2-(x_max-x_min))/2;
+            stary=y_min-(height*sizeGrid-sizeGrid/2-(y_max-y_min))/2;
             for (var i = 0; i <= width; i++) {
 					for (var j = 0; j <= height; j++) {            
-                        geoedges.push(new THREE.Vector3(starx+i*sizeGrid,stary+j*sizeGrid,0.0));
+                        
+                        if(i%2==0){
+                            geoedges.push(new THREE.Vector3(starx+i*sqrt3*sizeGrid/2,stary+j*sizeGrid,0.0));
+                           
+                        }
+                        else{
+                            geoedges.push(new THREE.Vector3(starx+i*sqrt3*sizeGrid/2,stary+j*sizeGrid-sizeGrid/2,0.0));
+                        }
+                        
                         if(i>0){
                             var geoedge=new THREE.Geometry();
                             geoedge.vertices.push(geoedges[iv(i-1,j)],geoedges[iv(i,j)]);
                             var line = new THREE.Line(geoedge,materialGrid2D);
-		                    gridgeometry.add(line);
+                            gridgeometry.add(line);
                         }        
                         if(j>0){
                             var geoedge=new THREE.Geometry();
@@ -204,16 +271,21 @@
                         }
                         if(i>0 && j>0){
                             var geoedge=new THREE.Geometry();
-                            geoedge.vertices.push(geoedges[iv(i-1,j-1)],geoedges[iv(i,j)]);
+                            if(i%2!=0){
+                                geoedge.vertices.push(geoedges[iv(i-1,j-1)],geoedges[iv(i,j)]);
+                            }
+                            else{
+                                geoedge.vertices.push(geoedges[iv(i-1,j+1)],geoedges[iv(i,j)]);
+                            }
                             var line = new THREE.Line(geoedge,materialGrid2D);
 		                    gridgeometry.add (line);
                         }
+                        gridI.push(i);
 					}
         	}
             gridPointsArray=geoedges;
             setup.scene.add(gridgeometry);
             GrowingFeed();
-            //console.log(geoedges[0]);
             //var got=getFeed();
             //console.log(got);
          }
@@ -222,7 +294,7 @@
          //		 | a0	b0 c0|
          //     | a1 b1 c1| )
          function Orientation(a,b,c) {
-                var det=b[0]*c[1]-a[0]*c[1]-b[1]*c[0]+a[1]*c[0]+a[0]*b[1]-a[1]*b[0];
+                var det=b.x*c.y-a.x*c.y-b.y*c.x+a.y*c.x+a.x*b.y-a.y*b.x;
                 if (det==0) {
                     return 0;
                 }
@@ -233,41 +305,7 @@
                 return -1;
                }	
          }
-        //Check if v is in the Polygon P by intersect the polygon locally with a square neiborhood 
-        //P: array of vertices oriented clockwise. 
-         function isInPolygon(P,v){
-            var relativeCoordinateX=Math.round((v.x-starx)/sizeGrid);
-            var relativeCoordinateY=Math.round((v.y-stary)/sizeGrid); 
-            var maxsideSquare=Math.min(width,relativeCoordinateX,height,height-relativeCoordinateY); 
-            var n=P.length;
-            function next(r){
-                  if(j==n-1){return 0;}
-                  else{return j+1;}
-            }
-            for(var i=1;i<=maxsideSquare;i++){
-               var value=-1; 
-               for (var j=0;j<=n;j++){
-                   //if Pj is in the neiborhood do the orientation test
-                   if (P[j].x>v.x-i*sizeGrid && P[j].x<v.x+i*sizeGrid && P[j].y>v.y-i*sizeGrid && P[j].y<v.y+i*sizeGrid ){
-                       value=Orientation([v.x,v.y],[P[j].x,P[j].y],[P[next(j)].x,P[next(j)].y]);
-                   }
-                   console.log("i=",i);
-                   break;
-               }
-               if (value==-1){
-                   console.log("v is in");
-                   return -1;
-               }
-               else if (value==0){
-                  return 0;
-               }    
-               else{
-                   return 1;
-               }
-            } 
-             
-         }
-
+   
         //Point-In-Polygon Algorithm: From http://alienryderflex.com/polygon/
         function isInPolygon2(P,v){
             var  i, j=P.length-1;
@@ -307,6 +345,29 @@
                     }
                     return indexP;
         }
+        //get neiborhood of the vertex of index k;
+        function getNeiboorHoodIndex(k){
+            var result=[];
+            var i=gridI[k];
+            var j=k-(height+1)*i;
+            if(i%2==0){
+                 result[0]=iv(i,j-1);
+                 result[1]=iv(i-1,j);
+                 result[2]=iv(i-1,j+1);
+                 result[3]=iv(i,j+1);
+                 result[4]=iv(i+1,j+1);
+                 result[5]=iv(i+1,j);
+            }
+            else{
+                 result[0]=iv(i,j-1);
+                 result[1]=iv(i-1,j-1);
+                 result[2]=iv(i-1,j);
+                 result[3]=iv(i,j+1);
+                 result[4]=iv(i+1,j);
+                 result[5]=iv(i+1,j-1);
+            }
+            return result;
+        }
         function getFeed(){
             var P=getBoundary2D(pointSample);
             //walk by the first line
@@ -317,8 +378,7 @@
             
             var wireGeometry= new THREE.Object3D();
             var materialBoundary = new THREE.LineBasicMaterial( { color: 0x27B327, linewidth: 2 } );         
-                     
-                     
+            
             var pointmaterial = new THREE.PointsMaterial( {color: 0x27B327, size: 10.0, sizeAttenuation: false, alphaTest: 0.5 } );
             pointmaterial.color.setHSL( 1.0, 0.3, 0.7 );
             var gotFeed=false;
@@ -327,39 +387,62 @@
             while(gotFeed==false && rows<(height-3)){
                 for(var i=0;i<=width;i++){
                     //console.log("estamos en i= ",i);
-                    var v={ x: startx2D +i*sizeGrid, y : starty2D};
+                    var v={ x: gridPointsArray[iv(i,rows)].x, y : gridPointsArray[iv(i,rows)].y};
                     //console.log("bool ", isInPolygon2(P,v)); 
-                    //pointGeometry.vertices=[new THREE.Vector3(v.x,v.y,0.0)];
-                    //var particles = new THREE.Points( pointGeometry, pointmaterial );
+                    pointGeometry.vertices=[new THREE.Vector3(v.x,v.y,0.0)];
+                    var particles = new THREE.Points( pointGeometry, pointmaterial );
                     //setup.scene.add( particles );
                     if(isInPolygon2(P,v)){
-                        var v2={ x: v.x, y: parseFloat(v.y)+parseFloat(sizeGrid)};
-                        var v3={ x: parseFloat(v.x)+parseFloat(sizeGrid), y: parseFloat(v.y)+2*parseFloat(sizeGrid)};
-                        var v4={ x: parseFloat(v.x)+2*parseFloat(sizeGrid), y: parseFloat(v.y)+2*parseFloat(sizeGrid)};
-                        var v5={ x: parseFloat(v.x)+2*parseFloat(sizeGrid), y: parseFloat(v.y)+parseFloat(sizeGrid)};
-                        var v6={ x: parseFloat(v.x)+parseFloat(sizeGrid), y: v.y};
-
+                        if(i%2==0){
+                          var v2={ x: gridPointsArray[iv(i-1,rows+1)].x, y:  gridPointsArray[iv(i-1,rows+1)].y};
+                          var v3={ x: gridPointsArray[iv(i-1,rows+2)].x, y: gridPointsArray[iv(i-1,rows+2)].y};
+                          var v4={ x: gridPointsArray[iv(i,rows+2)].x, y: gridPointsArray[iv(i,rows+2)].y};
+                          var v5={ x: gridPointsArray[iv(i+1,rows+2)].x, y: gridPointsArray[iv(i+1,rows+2)].y};
+                          var v6={ x: gridPointsArray[iv(i+1,rows+1)].x, y: gridPointsArray[iv(i+1,rows+1)].y};  
+                            
+                        }
+                        else{
+                          
+                          continue;// for now fix a bug
+                          var v2={ x: gridPointsArray[iv(i-1,rows)].x, y:  gridPointsArray[iv(i-1,rows)].y};
+                          var v3={ x: gridPointsArray[iv(i-1,rows+1)].x, y: gridPointsArray[iv(i-1,rows+1)].y};
+                          var v4={ x: gridPointsArray[iv(i,rows+2)].x, y: gridPointsArray[iv(i,rows+2)].y};
+                          var v5={ x: gridPointsArray[iv(i+1,rows+1)].x, y: gridPointsArray[iv(i+1,rows+1)].y};
+                          var v6={ x: gridPointsArray[iv(i+1,rows)].x, y: gridPointsArray[iv(i+1,rows)].y};
+                        }
+                        
                         if(isInPolygon2(P,v2)==true && isInPolygon2(P,v3)==true && isInPolygon2(P,v4)==true && isInPolygon2(P,v5)==true && isInPolygon2(P,v6)==true ){
-                            /*pointGeometry.vertices.push(new THREE.Vector3(v2.x,v2.y,0.0));
+                            pointGeometry.vertices.push(new THREE.Vector3(v2.x,v2.y,0.0));
                             pointGeometry.vertices.push(new THREE.Vector3(v3.x,v3.y,0.0));
                             pointGeometry.vertices.push(new THREE.Vector3(v4.x,v4.y,0.0));
                             pointGeometry.vertices.push(new THREE.Vector3(v5.x,v5.y,0.0));
                             pointGeometry.vertices.push(new THREE.Vector3(v6.x,v6.y,0.0));
                             var particle=new THREE.Points(pointGeometry, pointmaterial);
-                            setup.scene.add(particle);*/
+                            setup.scene.add(particle);
                             var neiborhoodIndex=[];
-                            neiborhoodIndex[0]=rows+(height+1)*i;
-                            neiborhoodIndex[1]=rows+(height+1)*i+1;
-                            neiborhoodIndex[2]=rows+(height+1)*(i+1)+2;
-                            neiborhoodIndex[3]=rows+(height+1)*(i+2)+2;
-                            neiborhoodIndex[4]=rows+(height+1)*(i+2)+1;
-                            neiborhoodIndex[5]=rows+(height+1)*(i+1);
-                            boundaryFeed.push(new vertexBoundary(v.x,v.y,neiborhoodIndex[0],neiborhoodIndex[5],neiborhoodIndex[1],0)); 
-                            boundaryFeed.push(new vertexBoundary(v2.x,v2.y,neiborhoodIndex[1],neiborhoodIndex[0],neiborhoodIndex[2],1)); 
-                            boundaryFeed.push(new vertexBoundary(v3.x,v3.y,neiborhoodIndex[2],neiborhoodIndex[1],neiborhoodIndex[3],2)); 
-                            boundaryFeed.push(new vertexBoundary(v4.x,v4.y,neiborhoodIndex[3],neiborhoodIndex[2],neiborhoodIndex[4],3)); 
-                            boundaryFeed.push(new vertexBoundary(v5.x,v5.y,neiborhoodIndex[4],neiborhoodIndex[3],neiborhoodIndex[5],4)); 
-                            boundaryFeed.push(new vertexBoundary(v6.x,v6.y,neiborhoodIndex[5],neiborhoodIndex[4],neiborhoodIndex[0],5)); 
+                            if(i%2==0){
+                                neiborhoodIndex[0]=iv(i,rows);
+                                neiborhoodIndex[1]=iv(i-1,rows+1);
+                                neiborhoodIndex[2]=iv(i-1,rows+2);
+                                neiborhoodIndex[3]=iv(i,rows+2);
+                                neiborhoodIndex[4]=iv(i+1,rows+2);
+                                neiborhoodIndex[5]=iv(i+1,rows+1);
+                            }
+                            else{
+                                neiborhoodIndex[0]=iv(i,rows);
+                                neiborhoodIndex[1]=iv(i-1,rows);
+                                neiborhoodIndex[2]=iv(i-1,rows+1);
+                                neiborhoodIndex[3]=iv(i,rows+2);
+                                neiborhoodIndex[4]=iv(i+1,rows+1);
+                                neiborhoodIndex[5]=iv(i+1,rows);
+                            }
+                            boundaryFeed.push(new vertexBoundary(v.x,v.y,neiborhoodIndex[0],neiborhoodIndex[5],neiborhoodIndex[1],i)); 
+                            boundaryFeed.push(new vertexBoundary(v2.x,v2.y,neiborhoodIndex[1],neiborhoodIndex[0],neiborhoodIndex[2],i-1)); 
+                            boundaryFeed.push(new vertexBoundary(v3.x,v3.y,neiborhoodIndex[2],neiborhoodIndex[1],neiborhoodIndex[3],i-1)); 
+                            boundaryFeed.push(new vertexBoundary(v4.x,v4.y,neiborhoodIndex[3],neiborhoodIndex[2],neiborhoodIndex[4],i)); 
+                            boundaryFeed.push(new vertexBoundary(v5.x,v5.y,neiborhoodIndex[4],neiborhoodIndex[3],neiborhoodIndex[5],i+1)); 
+                            boundaryFeed.push(new vertexBoundary(v6.x,v6.y,neiborhoodIndex[5],neiborhoodIndex[4],neiborhoodIndex[0],i+1));   
+                            
                             /*var edge1=new THREE.Geometry();
                             var edge2=new THREE.Geometry();
                             var edge3=new THREE.Geometry();
@@ -403,7 +486,6 @@
                     }
                 }
                 rows++;
-                starty2D=parseFloat(starty2D)+parseFloat(sizeGrid);
             }
             if(gotFeed==false){
                 return [false,[]];   
@@ -433,12 +515,19 @@
                                   boundaryDoubleLinkList.addi(new vertexBoundary(gridPointsArray[v].x,gridPointsArray[v].y,v,varray[1].index,varray[0].index,0),boundaryDoubleLinkList.positioni(varray[1]));   
                                   varray[1].next=v;
                                   varray[0].prev=v;
+                                  
                               }
                               else{
                                   boundaryDoubleLinkList.addi(new vertexBoundary(gridPointsArray[v].x,gridPointsArray[v].y,v,varray[0].index,varray[1].index,0),boundaryDoubleLinkList.positioni(varray[0]));   
                                   varray[0].next=v;
                                   varray[1].prev=v;
                               }
+                                  if(varray[1].x-v.x<0.0001){
+                                    v.indexarray=varray[1].indexarray;
+                                  }
+                                  else{
+                                    v.indexarray=varray[0].indexarray;  
+                                  }
                               break;
                      
                       case 3: 
@@ -454,6 +543,15 @@
                                   varray[0].next=v;
                                   varray[2].prev=v;
                               }
+                                  if(varray[1].x-v.x<0.0001){
+                                    v.indexarray=varray[1].indexarray;
+                                  }
+                                  else if(varray[2].x-v.x<0.0001){
+                                    v.indexarray=varray[2].indexarray;  
+                                  }
+                                  else{
+                                    v.indexarray=varray[0].indexarray;  
+                                  }
                               break;
                       case 4: 
                               if(varray[1].next==varray[0].index){
@@ -470,7 +568,18 @@
                                   varray[0].next=v;
                                   varray[3].prev=v;
                               }
-            
+                                  if(varray[1].x-v.x<0.0001){
+                                    v.indexarray=varray[1].indexarray;
+                                  }
+                                  else if(varray[2].x-v.x<0.0001){
+                                    v.indexarray=varray[2].indexarray;  
+                                  }
+                                  else if(varray[3].x-v.x<0.0001){
+                                    v.indexarray=varray[3].indexarray;  
+                                  }
+                                  else{
+                                    v.indexarray=varray[0].indexarray;  
+                                  }
                               break;
                       
                       case 5: 
@@ -491,7 +600,22 @@
                                   varray[0].next=v;
                                   varray[4].prev=v;
                               }
-                             
+                               
+                                  if(varray[1].x-v.x<0.0001){
+                                    v.indexarray=varray[1].indexarray;
+                                  }
+                                  else if(varray[2].x-v.x<0.0001){
+                                    v.indexarray=varray[2].indexarray;  
+                                  }
+                                  else if(varray[3].x-v.x<0.0001){
+                                    v.indexarray=varray[3].indexarray;  
+                                  }
+                                  else if(varray[4].x-v.x<0.0001){
+                                    v.indexarray=varray[4].indexarray;  
+                                  }
+                                  else{
+                                    v.indexarray=varray[0].indexarray;  
+                                  }
                               break;                      
                           
                       case 6: if(varray[1].next==varray[0].index){
@@ -512,6 +636,25 @@
                                   varray[0].next=v;
                                   varray[5].prev=v;
                               }
+                                  if(varray[1].x-v.x<0.0001){
+                                    v.indexarray=varray[1].indexarray;
+                                  }
+                                  else if(varray[2].x-v.x<0.0001){
+                                    v.indexarray=varray[2].indexarray;  
+                                  }
+                                  else if(varray[3].x-v.x<0.0001){
+                                    v.indexarray=varray[3].indexarray;  
+                                  }
+                                  else if(varray[4].x-v.x<0.0001){
+                                    v.indexarray=varray[4].indexarray;  
+                                  }
+                                  else if(varray[5].x-v.x<0.0001){
+                                    v.indexarray=varray[5].indexarray;  
+                                  }
+                                  
+                                  else{
+                                    v.indexarray=varray[0].indexarray;  
+                                  }
                                break;
                   }     
               
@@ -547,7 +690,10 @@
                 function validAdjacentVertex(feedBound,v,i){
                     var P=getBoundary2D(pointSample);
                     if(isInPolygon2(P,v)){
-                        var neiborhoodIndex=[i-2-height,i-1-height,i+1,i+height+2,i+height+1,i-1];
+                        
+                      var neiborhoodIndex=getNeiboorHoodIndex(i);
+                       
+                        
                         //console.log(neiborhoodIndex);
                         var vertexIntersection=[];
                         var iP=indexFromBoundary(feedBound);
@@ -556,6 +702,7 @@
                             var indexP=iP.indexOf(neiborhoodIndex[j]);
                             if(indexP==-1){
                                 inicio=j;
+                                break;
                             }
                         }
                         //console.log("inicio ",inicio);
@@ -581,27 +728,16 @@
                         return vertexIntersection;
                     }
                 }
-                function addNeiborFromVertex(P,bound,i){
-                        var ibound=indexFromBoundary(bound);
-                        var neiborhoodIndex=[i-2-height,i-1-height,i+1,i+height+2,i+height+1,i-1];
-                        var result=[];
-                        //console.log(neiborhoodIndex);
-                        for(var k=0;k<6;k++){
-                           if(!isInPolygon2(bound,gridPointsArray[neiborhoodIndex[k]]) && isInPolygon2(P,gridPointsArray[neiborhoodIndex[k]]) && ibound.indexOf(neiborhoodIndex[k])==-1){
-                               result.push(neiborhoodIndex[k]);
-                            }    
-                        }
-                        return result;
-                }
-                //Get the first grid vertex  out from the polygon bound
-                // give the index of them
+               
+                //Get the exterior grid vertex to the polygon bound
+                // give an array of index in gridpointArray
                 function getOutVertexFromBoundary(P,bound){
                     var result=[];
                     for(var j=0;j<bound.length;j++){
                         var i=bound[j].index;
                         var ibound=indexFromBoundary(bound);
-                        var neiborhoodIndex=[i-2-height,i-1-height,i+1,i+height+2,i+height+1,i-1];
-                        //console.log(neiborhoodIndex);
+                        var neiborhoodIndex=getNeiboorHoodIndex(i);
+                        //var neiborhoodIndex=[i-2-height,i-1-height,i+1,i+height+2,i+height+1,i-1];
                         for(var k=0;k<6;k++){
                            if(!isInPolygon2(bound,gridPointsArray[neiborhoodIndex[k]]) && isInPolygon2(P,gridPointsArray[neiborhoodIndex[k]]) && ibound.indexOf(neiborhoodIndex[k])==-1){
                                result.push(neiborhoodIndex[k]);
@@ -736,7 +872,7 @@
                 //drawBoundary(gridBoundary);
                 OptimizeValence();
                 
-               // console.log(stackBoundayToProcess);
+                //console.log(stackBoundayToProcess);
                 
             }
             
@@ -815,10 +951,11 @@
             //vertex is of type VertexBounday class
             function dirDiff(vertex){
                 var i=vertex.index;
-                var neiborhoodIndex=[i-2-height,i-1-height,i+1,i+height+2,i+height+1,i-1];
+                var neiborhoodIndex=getNeiboorHoodIndex(i);
+                
                 var indexP=neiborhoodIndex.indexOf(vertex.prev);
-                for(var k=indexP+1;k<6+indexP;k++){
-                    if(indexP!=-1){
+                if(indexP!=-1){
+                    for(var k=indexP+1;k<6+indexP;k++){
                         if(vertex.next==neiborhoodIndex[k%6]);{
                             var step=k-indexP;
                             if( step==2 || step==4){
@@ -830,13 +967,19 @@
                             if( step==3){
                                 return 0;
                             }
-                        }        
-                    }            
-                    else{
-                        return "fatal error";
-                            
+                        }  
                     }
+                }            
+                else{
+                    console.log(neiborhoodIndex);
+                    console.log(i);
+                    console.log(gridI[i]);
+                    //console.log(indexFromBoundary(gridBoundary));
+                    console.log("fatal error");
+                    return 0;
+                            
                 }
+                
             }
             // array is a array of vertexBoundary elements
             function errorDC(array){
@@ -878,12 +1021,62 @@
                      }
                      setup.scene.add(Bgeometry);
             }
+            function correctCorruptedEdge(dobleListBoundary){
+                for(var i=0;i<dobleListBoundary.length;i++){
+                    var vertex=dobleListBoundary[i];
+                    if(dirDiff(vertex)==2){
+                        if(dirDiff(vertex.prev)!=0 || dirDiff(vertex.next)!=0){
+                            vertex.prev.next=vertex.next;
+                            vertex.next.prev=vertex.prev;
+                        }
+                        dobleListBoundary.remove(dobleListBoundary.positioni(vertex));
+                    }
+                }
+                
+            }
+            //check if a vertex of index v in P is convex or concave
+            // obtuse if return -1
+            // convex if return 1
+            // in a line if return 0
+            function IsReflex(v,P) {
+                var orient;
+                var n=P.length;
+                //console.log(n);
+               if (v==0){
+                    orient=Orientation(P[n-1],P[v],P[v+1]);   
+               }  	
+               else if (v==n-1) {
+                orient=Orientation(P[n-2],P[v],P[0]);
+               }
+               else {
+                orient=Orientation(P[v-1],P[v],P[v+1]);
+               }
+               return orient; 	
+            }
+            function correctConvexConcaveConvexSequence(dobleListBoundary){
+                var new=dobleListBoundary.length;
+                var arrayconcavidade=[];
+                for(var i=0;i<dobleListBoundary.length;i++){
+                    arrayconcavidade[i]=IsReflex(i,dobleListBoundary.toArray());
+                }
+                var ternas=[];
+                for(var i=0;i<arrayconcavidade.length;i++){
+                    if(arrayconcavidade[i]!=0){
+                        ternas.push[i];
+                    }
+                }
+                for(var i=0;i<ternas.length-3;i++){
+                    if(ternas[i]==1 && ternas[i+1]==-1 && ternas[i+2]==1){
+                        
+                    }
+                }
+            }
             function OneStepFromBoundary(bound){
                     var result=[];
                     for(var j=0;j<bound.length;j++){
                         var i=bound[j].index;
                         var ibound=indexFromBoundary(bound);
-                        var neiborhoodIndex=[i-2-height,i-1-height,i+1,i+height+2,i+height+1,i-1];
+                        var neiborhoodIndex=getNeiboorHoodIndex(i);
                         //console.log(neiborhoodIndex);
                         for(var k=0;k<6;k++){
                             if(neiborhoodIndex[k]>-1 && neiborhoodIndex[k]<=(height+1)*(width+1)){
@@ -897,7 +1090,7 @@
             }
             function validAdjacentVertex(feedBound,v,i){
                    // var P=getBoundary2D(pointSample);
-                    var neiborhoodIndex=[i-2-height,i-1-height,i+1,i+height+2,i+height+1,i-1];
+                   var neiborhoodIndex=getNeiboorHoodIndex(i);
                         //console.log(neiborhoodIndex);
                     var vertexIntersection=[];
                     var iP=indexFromBoundary(feedBound);
@@ -906,6 +1099,7 @@
                             var indexP=iP.indexOf(neiborhoodIndex[j]);
                             if(indexP==-1){
                                 inicio=j;
+                                break;
                             }
                     }
                         //console.log("inicio ",inicio);
@@ -926,7 +1120,8 @@
                     }
             } 
             var finish=false;
-            while(!finish){
+            var t=0;
+            while(t<5){
                  moreOneStep=OneStepFromBoundary(gridBoundary);
                  //console.log(moreOneStep);
                  //console.log(finalBoundary.toArray());
@@ -936,34 +1131,53 @@
                 //drawBoundary(gridBoundary);
                  var error=errorDC(gridBoundary);
                  console.log(error);
-                 var t=0;
+                 //var t=0;
                  while(moreOneStep.length!=0){
                      var v=moreOneStep.shift();
                      var finalBoundary=toDoubleLinkList(gridBoundary);
-                     console.log(finalBoundary.toArray().length);
+                     correctCorruptedEdge(finalBoundary);
+                     //console.log(finalBoundary.toArray().length);
                      var varray=validAdjacentVertex(finalBoundary.toArray(),gridPointsArray[v],v);
                      if(varray.length<2){continue;}    
                      //var finalBoundary=toDoubleLinkList(gridBoundary.slice());
                      //console.log(finalBoundary.toArray());
                      growVertex(varray,finalBoundary,v);
-                     console.log(finalBoundary.toArray().length);
+                     //console.log(finalBoundary.toArray().length);
                      var errorAtual=errorDC(finalBoundary.toArray());
                      if (error>errorAtual){
-                        t++; 
+                        //t++; 
                         console.log("entrei"); 
                         error=errorAtual;
                         gridBoundary=finalBoundary.toArray(); 
                      }     
                  }
-                 if(t==0){finish=true;}
+                 t++;
+                 //if(t==0){finish=true;}
                  //moreOneStep=OneStepFromBoundary(gridBoundary);
             }
             //console.log(indexFromBoundary(gridBoundary));
             console.log(error);
-            drawAssociated();
+            //drawAssociated();
             drawBoundary(gridBoundary);
         }
-
+        function clearScene(){
+             for( var i = setup.scene.children.length - 1; i >= 0; i--) { 
+                 var  obj = setup.scene.children[i];
+                 setup.scene.remove(obj);
+             }
+              points=[];
+              pointSample = [ ];
+              gridI=[];
+        
+        LineSample = new THREE.Object3D();
+        LineStroke = new THREE.Object3D();
+        VisualGrid = new THREE.Object3D();
+       
+        gridPointsArray=[];
+        gridgeometry = new THREE.Object3D();
+        gridBoundary=[];
+       
+         }
         window.addEventListener('resize', onWindowResize, false);
         function onWindowResize() {
             setup.resize();
@@ -974,6 +1188,7 @@
             setup.render();
         }
         render();
+        setup.render();
         var canvaswindows=d3.select("canvas");
         canvaswindows.on("mousedown",onMouseDown);
         canvaswindows.on("mouseup",onMouseUp);
@@ -985,36 +1200,19 @@
     <script>
          var stepbutton= document.getElementById('stepButton');    
          var clearbutton=document.getElementById('clearButton');    
-         stepbutton.onclick=function () {
+         //clearbutton.onclick=
+         d3.select('#stepButton').on('click',function () {
              setup.controls.enabled=true;
              points=[];
+             
              console.log(points);
              canvaswindows.on("mousedown",null);
              canvaswindows.on("mouseup",null);
              canvaswindows.on("mousemove",null);
              //canvaswindows.removeEventListener('click', onMouseClick);
              //window.addEventListener( 'mousemove', onMouseMove, false );
-         };   
-         clearbutton.onclick=function (){
-             for( var i = setup.scene.children.length - 1; i >= 0; i--) { 
-                 var  obj = setup.scene.children[i];
-                 setup.scene.remove(obj);
-             }
-              points=[];
-              pointSample = [ ];
-        
-        LineSample = new THREE.Object3D();
-        LineStroke = new THREE.Object3D();
-        VisualGrid = new THREE.Object3D();
-       
-        gridPointsArray=[];
-        gridgeometry = new THREE.Object3D();
-        gridBoundary=[];
-       
-         }
-         /*d3.select('#stepButton').on('click',function () {
-    	    setup.controls.enabled=true;
-         });*/          
+         });
+         d3.select('#clearButton').on('click',clearScene);
          
     </script>
 	
