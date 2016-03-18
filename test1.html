@@ -341,8 +341,8 @@
                     //console.log("estamos en i= ",i);
                     var v={ x: gridPointsArray[iv(i,rows)].x, y : gridPointsArray[iv(i,rows)].y};
                     //console.log("bool ", isInPolygon2(P,v)); 
-                    pointGeometry.vertices=[new THREE.Vector3(v.x,v.y,0.0)];
-                    var particles = new THREE.Points( pointGeometry, pointmaterial );
+                    //pointGeometry.vertices=[new THREE.Vector3(v.x,v.y,0.0)];
+                    //var particles = new THREE.Points( pointGeometry, pointmaterial );
                     //setup.scene.add( particles );
                     if(isInPolygon2(P,v)){
                         if(i%2==0){
@@ -364,13 +364,13 @@
                         }
                         
                         if(isInPolygon2(P,v2)==true && isInPolygon2(P,v3)==true && isInPolygon2(P,v4)==true && isInPolygon2(P,v5)==true && isInPolygon2(P,v6)==true ){
-                            pointGeometry.vertices.push(new THREE.Vector3(v2.x,v2.y,0.0));
+                            /*pointGeometry.vertices.push(new THREE.Vector3(v2.x,v2.y,0.0));
                             pointGeometry.vertices.push(new THREE.Vector3(v3.x,v3.y,0.0));
                             pointGeometry.vertices.push(new THREE.Vector3(v4.x,v4.y,0.0));
                             pointGeometry.vertices.push(new THREE.Vector3(v5.x,v5.y,0.0));
                             pointGeometry.vertices.push(new THREE.Vector3(v6.x,v6.y,0.0));
                             var particle=new THREE.Points(pointGeometry, pointmaterial);
-                            setup.scene.add(particle);
+                            setup.scene.add(particle);*/
                             var neiborhoodIndex=[];
                             if(i%2==0){
                                 neiborhoodIndex[0]=iv(i,rows);
@@ -849,7 +849,7 @@
                 }
                 //return the index of the nearest grid point to vertex
                 function findNearGridVertex(vertex,arrayBoundaryIndex){
-                    var i=Math.floor((vertex.x-starx)/sizeGrid);
+                    var i=Math.floor(2*(vertex.x-starx)/sqrt3*sizeGrid); 
                     var j=Math.floor((vertex.y-stary)/sizeGrid);
                     var point=Victor.fromArray([vertex.x,vertex.y]);
                     var v0=Victor.fromArray([gridPointsArray[iv(i,j)].x,gridPointsArray[iv(i,j)].y]);
@@ -1006,7 +1006,6 @@
                return orient; 	
             }
             function correctConvexConcaveConvexSequence(dobleListBoundary){
-                var new=dobleListBoundary.length;
                 var arrayconcavidade=[];
                 for(var i=0;i<dobleListBoundary.length;i++){
                     arrayconcavidade[i]=IsReflex(i,dobleListBoundary.toArray());
@@ -1019,7 +1018,7 @@
                 }
                 for(var i=0;i<ternas.length-3;i++){
                     if(ternas[i]==1 && ternas[i+1]==-1 && ternas[i+2]==1){
-                        
+                        console.log("move");
                     }
                 }
             }
