@@ -46,7 +46,7 @@
         <button id="clearButton">Clear </button>
         <button id="finishButton">Finish </button>       
         <button id="reflexButton">Cut </button>
-        <button id="step1FakeButton">Draw </button>
+        <button id="assoButton">Associated </button>
         <button id="step1Button">Step1 </button>     
         <button id="step2Button">Step2 </button>                                        
         </p>
@@ -723,10 +723,13 @@
                 if(howgrow=='Optimize'){     
                     console.log("opt ative");
                     OptimizeValence();
+                    drawBoundary(gridBoundary);
                 }
+                else{
                // var aux=MappingVerteToStroke();
-                drawAssociated();
-                drawBoundary(gridBoundary);
+                    drawAssociated();
+                    drawBoundary(gridBoundary);
+                }
                 setTimeout(cancelAnimation,4000);
             }
             
@@ -769,10 +772,10 @@
                     var eval1=m1*vertex.x+n1;
                     var eval2=m2*vertex.x+n2;
                     var neiborhoodIndex=[];
-                    var pointGeometry = new THREE.Geometry();
+                    /*var pointGeometry = new THREE.Geometry();
                     var pointGeometryb = new THREE.Geometry();
                     var pointmaterial = new THREE.PointsMaterial( {color: 0x27B327, size: 10.0, sizeAttenuation: false, alphaTest: 0.5 } );
-                    var pointmaterialblack = new THREE.PointsMaterial( {color: 0x000000, size: 10.0, sizeAttenuation: false, alphaTest: 0.5 } );
+                    var pointmaterialblack = new THREE.PointsMaterial( {color: 0x000000, size: 10.0, sizeAttenuation: false, alphaTest: 0.5 } );*/
             
                     if (eval2<vertex.y){
                             if(i%2==0){
@@ -798,12 +801,12 @@
                               neiborhoodIndex=[iv(i,j),iv(i+1,j),iv(i+1,j-1)];    
                             }   
                     }
-                    pointGeometry.vertices.push(gridPointsArray[neiborhoodIndex[0]],gridPointsArray[neiborhoodIndex[1]],gridPointsArray[neiborhoodIndex[2]],gridPointsArray[neiborhoodIndex[2]]);
+                    /*pointGeometry.vertices.push(gridPointsArray[neiborhoodIndex[0]],gridPointsArray[neiborhoodIndex[1]],gridPointsArray[neiborhoodIndex[2]],gridPointsArray[neiborhoodIndex[2]]);
                     pointGeometryb.vertices.push(new THREE.Vector3(vertex.x,vertex.y,vertex.z));
-                    //var particles=new THREE.Points(pointGeometry,pointmaterial);
-                    //var particlesb=new THREE.Points(pointGeometryb,pointmaterialblack);
-                    //setup.scene.add(particles);
-                    //setup.scene.add(particlesb);
+                    var particles=new THREE.Points(pointGeometry,pointmaterial);
+                    var particlesb=new THREE.Points(pointGeometryb,pointmaterialblack);
+                    setup.scene.add(particles);
+                    setup.scene.add(particlesb);*/
                     var point=Victor.fromArray([vertex.x,vertex.y]);
                     var v0=Victor.fromArray([gridPointsArray[neiborhoodIndex[0]].x,gridPointsArray[neiborhoodIndex[0]].y]);
                     var v1=Victor.fromArray([gridPointsArray[neiborhoodIndex[1]].x,gridPointsArray[neiborhoodIndex[1]].y]);
@@ -815,18 +818,21 @@
                     var imin=neiborhoodIndex[0];
                     var t=0;
                     for(var k=1;k<3;k++){
-                        if(arrayBoundaryIndex.indexOf(neiborhoodIndex[k])!=-1){
+                        var indexB=arrayBoundaryIndex.indexOf(neiborhoodIndex[k]);
+                        if(indexB!=-1){
                             var d=point.distance(neiborhood[k]);
                             if(d<min || t==0 ){
                                 min=d;    
-                                imin=neiborhoodIndex[k];
+                                //imin=neiborhoodIndex[k];
+                                imin=indexB;
                             }
                             t++;
                         }
                     }
-                    if(t!=0){return imin;}
-                    else if(arrayBoundaryIndex.indexOf(neiborhoodIndex[0])!=-1){
-                        return neiborhoodIndex[0];
+                    var index0=arrayBoundaryIndex.indexOf(neiborhoodIndex[0]);
+                    if(t!=0){return [imin,indexB];}
+                    else if(index0!=-1){
+                        return [index0,index0];// second is the index in the boundary correspond to first 
                     }
                     else{
                         console.log("muito espaco");
@@ -852,11 +858,17 @@
             for(var j=0;j<n-1;j++){
                 var fi=findNearGridVertex(pointSample[curvatures[j][0]],indexFromBoundary(gridBoundary));
                 if(fi!=undefined){
-                    AssociateGridPoints.push(fi);
-                    pointSampleIndex.push(curvatures[j][0]);
+                    AssociateGridPoints.push(gridBoundary[fi[0]]);
+                    //pointSampleIndex.push(curvatures[j][0]);
+                    gridBoundary[fi[0]].associated=curvatures[j][0];
                 }
                 else{
                     continue;
+                }
+            }
+            for(var i=0;i<gridBoundary.length;i++){
+                if(gridBoundary[i].associated==-1){
+                    gridBoundary[i].associated=gridBoundary[(i+1)%gridBoundary.length].associated;
                 }
             }
             /*
@@ -868,15 +880,26 @@
             setup.scene.add(particles);
             */
             //console.log(AssociateGridPoints);
-            return [AssociateGridPoints,pointSampleIndex];
+            //return [AssociateGridPoints,pointSampleIndex];
         }
         function drawAssociated(){
-             var associatedToBoundaryStroke=MappingVerteToStroke();
+             MappingVerteToStroke();
              var materialBoundary = new THREE.LineBasicMaterial( { color: 0x000000, linewidth: 2 } );
              var Bgeometry= new THREE.Object3D();
-             for(var i=0;i<associatedToBoundaryStroke[0].length;i++){
+             Bgeometry.name="borderLine";
+             var n=gridBoundary.length;
+             for(var i=0;i<n;i++){
                 var edge=new THREE.Geometry();
-                edge.vertices.push(gridPointsArray[associatedToBoundaryStroke[0][i]],pointSample[associatedToBoundaryStroke[1][i]]);
+                edge.vertices.push(gridPointsArray[gridBoundary[i].index],pointSample[gridBoundary[i].associated]);
+                if(i>0 && gridBoundary[i-1].associated!=gridBoundary[i].associated) {
+                 edge.vertices.push(gridPointsArray[gridBoundary[i].index],pointSample[gridBoundary[i-1].associated]); 
+                }
+                var line = new THREE.Line(edge,materialBoundary);
+                Bgeometry.add(line);    
+             }
+             if(i==0 && gridBoundary[n-1].associated!=gridBoundary[0].associated){
+                var edge=new THREE.Geometry();
+                edge.vertices.push(gridPointsArray[gridBoundary[n-1].index],pointSample[gridBoundary[0].associated]);
                 var line = new THREE.Line(edge,materialBoundary);
                 Bgeometry.add(line);    
              }
@@ -1135,7 +1158,7 @@
             //correctConvexConcaveConvexSequence(gridBoundary);
             //console.log(indexFromBoundary(gridBoundary));
             //console.log(error);
-            drawAssociated();
+            //drawAssociated();
             //drawBoundary(gridBoundary);
 
         }
@@ -1209,8 +1232,12 @@
          });
          d3.select('#drawButton').on('click',function () {
             var Linesam=setup.scene.getObjectByName("LineBoundary");
-            if(Linesam!=undefined){
+            var borderl=setup.scene.getObjectByName("borderLine"); 
+            if(Linesam!=undefined ){
                 Linesam.children=[];
+            }
+            if(borderl!=undefined ){
+                borderl.children=[];
             }
             DrawGrid("Optimize");
             cancelRender=false;
@@ -1218,7 +1245,12 @@
             setTimeout(cancelAnimation,4000); 
          });
          d3.select('#clearButton').on('click',clearScene);
-         
+         d3.select('#assoButton').on('click',function () {
+             drawAssociated();
+             cancelRender=false;
+             render(); 
+             setTimeout(cancelAnimation,4000); 
+         });
     </script>
 	
 </body></html>
