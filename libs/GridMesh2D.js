@@ -33,7 +33,7 @@ function edgeMaterial (edge) {
     });
     return material;
 }
-function createPaperModel (n,m,s) {
+function createMeshModel (n,m,s) {
 				function iv (i,j) { return i*m+j };
 				var fac = [], vtx = [];
 				var x0 = -(n-1)*s/2;

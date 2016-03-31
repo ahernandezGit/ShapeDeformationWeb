@@ -646,6 +646,12 @@ Hemesh.prototype.fromOBJ = function(text) {
 	}
 	this.addFaces(faces);
 }
+Hemesh.prototype.fromFaceVertexArray = function(faces,vertices) {
+	for(var i=0; i < vertices.length; ++i) {
+		this.addVertex(vertices[i]);
+	}
+	this.addFaces(faces);
+}
 
 Hemesh.prototype.toOBJ = function() {
 	var vertices = [];
@@ -690,7 +696,7 @@ Hemesh.prototype.toOBJ = function() {
 Hemesh.prototype.toGeometry = function() {
 	var geometry = new THREE.Geometry();
 	geometry.vertices = hemesh.positions;
-	
+	hemesh=this;
 	for(var f=0; f < hemesh.faceAdjacency.length; ++f) {
 		var h = hemesh.faceHalfedge(f);
 		if(hemesh.halfedgeValid(h)) {
@@ -710,6 +716,7 @@ Hemesh.prototype.toGeometry = function() {
 
 Hemesh.prototype.toWireframeGeometry = function() {
 	var geometry = new THREE.Geometry();
+    hemesh=this;
 	for(var h=0; h < this.halfedgeAdjacency.length; h += 2) {
 		if(hemesh.vertexValid(this.halfedgeVertex(h))) {
 			var v1 = this.halfedgeSource(h);
