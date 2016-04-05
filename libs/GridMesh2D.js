@@ -41,11 +41,13 @@ gridI=[];
 gridPointsArray=[]; 
 LineSample = new THREE.Object3D();
 gridgeometry = new THREE.Object3D();
+hemesh=new Hemesh();
 gridBoundary=[];
 gridInterior=[];
 GridMeshVertexArray=[];
 GridMeshFacesArray=[];
 TableHashIndextoPosition=[];
+TableHashVertextoFace=[];    
 document.getElementById("valueexample").innerHTML=newVal;
 Resample(points);
 DrawGrid();
@@ -123,7 +125,7 @@ for (var i = 0; i <= width; i++) {
         }
 }
 gridPointsArray=geoedges;
-setup.scene.add(gridgeometry);
+//setup.scene.add(gridgeometry);
 GrowingFeed(howgrow);
 //var got=getFeed();
 //console.log(got);
@@ -345,39 +347,51 @@ var result=new DoublyLinkedList();
 return result;        
 }
 
-function growVertex(varray,boundaryDoubleLinkList,v){
+function growVertex(varray,boundaryDoubleLinkList,v,addtoGrid){
+      if(addtoGrid==undefined){addtoGrid=true;}
+      console.log(addtoGrid);
       var wireGeometry= new THREE.Object3D();
       var materialBoundary = new THREE.LineBasicMaterial( { color: 0x27B327, linewidth: 2 } );   
-      GridMeshVertexArray.push(new VertexGridmesh(gridPointsArray[v].x,gridPointsArray[v].y,0.0,"boundary",v));
-      TableHashIndextoPosition[v.toString()]=GridMeshVertexArray.length-1;
+      if(addtoGrid){
+          GridMeshVertexArray.push(new VertexGridmesh(gridPointsArray[v].x,gridPointsArray[v].y,0.0,"boundary",v));
+          TableHashIndextoPosition[v.toString()]=GridMeshVertexArray.length-1;
+      }
       switch(varray.length){
           case 2: //console.log(finalBoundary.toArray());
                   if(varray[1].next==varray[0].index){
-                      boundaryDoubleLinkList.addi(new vertexBoundary(gridPointsArray[v].x,gridPointsArray[v].y,v,varray[1].index,varray[0].index,0),boundaryDoubleLinkList.positioni(varray[1]));   
+                      boundaryDoubleLinkList.addi(new vertexBoundary(gridPointsArray[v].x,gridPointsArray[v].y,v,varray[1].index,varray[0].index,GridMeshFacesArray.length),boundaryDoubleLinkList.positioni(varray[1]));   
                       varray[1].next=v;
-                      varray[0].prev=v; GridMeshFacesArray.push([TableHashIndextoPosition[varray[0].index.toString()],TableHashIndextoPosition[varray[1].index.toString()],GridMeshVertexArray.length-1]);
+                      varray[0].prev=v;
+                      if(addtoGrid){           GridMeshFacesArray.push([TableHashIndextoPosition[varray[0].index.toString()],TableHashIndextoPosition[varray[1].index.toString()],GridMeshVertexArray.length-1]);
+                      }
                   }
                   else{
-                      boundaryDoubleLinkList.addi(new vertexBoundary(gridPointsArray[v].x,gridPointsArray[v].y,v,varray[0].index,varray[1].index,0),boundaryDoubleLinkList.positioni(varray[0]));   
+                      boundaryDoubleLinkList.addi(new vertexBoundary(gridPointsArray[v].x,gridPointsArray[v].y,v,varray[0].index,varray[1].index,GridMeshFacesArray.length),boundaryDoubleLinkList.positioni(varray[0]));   
                       varray[0].next=v;
-                      varray[1].prev=v; GridMeshFacesArray.push([TableHashIndextoPosition[varray[1].index.toString()],TableHashIndextoPosition[varray[0].index.toString()],GridMeshVertexArray.length-1]);
+                      varray[1].prev=v; 
+                      if(addtoGrid){ GridMeshFacesArray.push([TableHashIndextoPosition[varray[1].index.toString()],TableHashIndextoPosition[varray[0].index.toString()],GridMeshVertexArray.length-1]);
+                      }
                   }     
                   break;
 
           case 3: 
                   if(varray[1].next==varray[0].index){
                       boundaryDoubleLinkList.remove(boundaryDoubleLinkList.positioni(varray[1]));
-                      boundaryDoubleLinkList.addi(new vertexBoundary(gridPointsArray[v].x,gridPointsArray[v].y,v,varray[2].index,varray[0].index,0),boundaryDoubleLinkList.positioni(varray[2]));   
+                      boundaryDoubleLinkList.addi(new vertexBoundary(gridPointsArray[v].x,gridPointsArray[v].y,v,varray[2].index,varray[0].index,GridMeshFacesArray.length),boundaryDoubleLinkList.positioni(varray[2]));   
                       varray[2].next=v;
-                      varray[0].prev=v; GridMeshFacesArray.push([TableHashIndextoPosition[varray[1].index.toString()],TableHashIndextoPosition[varray[2].index.toString()],GridMeshVertexArray.length-1]);
+                      varray[0].prev=v; 
+                      if(addtoGrid){ GridMeshFacesArray.push([TableHashIndextoPosition[varray[1].index.toString()],TableHashIndextoPosition[varray[2].index.toString()],GridMeshVertexArray.length-1]);
                       GridMeshFacesArray.push([TableHashIndextoPosition[varray[0].index.toString()],TableHashIndextoPosition[varray[1].index.toString()],GridMeshVertexArray.length-1]);
+                      }
                   }
                   else{
                       boundaryDoubleLinkList.remove(boundaryDoubleLinkList.positioni(varray[1]));
-                      boundaryDoubleLinkList.addi(new vertexBoundary(gridPointsArray[v].x,gridPointsArray[v].y,v,varray[0].index,varray[2].index,0),boundaryDoubleLinkList.positioni(varray[0]));   
+                      boundaryDoubleLinkList.addi(new vertexBoundary(gridPointsArray[v].x,gridPointsArray[v].y,v,varray[0].index,varray[2].index,GridMeshFacesArray.length),boundaryDoubleLinkList.positioni(varray[0]));   
                       varray[0].next=v;
-                      varray[2].prev=v;                                  GridMeshFacesArray.push([TableHashIndextoPosition[varray[2].index.toString()],TableHashIndextoPosition[varray[1].index.toString()],GridMeshVertexArray.length-1]);
+                      varray[2].prev=v;     
+                      if(addtoGrid){ GridMeshFacesArray.push([TableHashIndextoPosition[varray[2].index.toString()],TableHashIndextoPosition[varray[1].index.toString()],GridMeshVertexArray.length-1]);
                       GridMeshFacesArray.push([TableHashIndextoPosition[varray[1].index.toString()],TableHashIndextoPosition[varray[0].index.toString()],GridMeshVertexArray.length-1]);
+                      }
                   }
 
                   break;
@@ -385,20 +399,27 @@ function growVertex(varray,boundaryDoubleLinkList,v){
                   if(varray[1].next==varray[0].index){
                       boundaryDoubleLinkList.remove(boundaryDoubleLinkList.positioni(varray[2]));
                       boundaryDoubleLinkList.remove(boundaryDoubleLinkList.positioni(varray[1]));
-                      boundaryDoubleLinkList.addi(new vertexBoundary(gridPointsArray[v].x,gridPointsArray[v].y,v,varray[3].index,varray[0].index,0),boundaryDoubleLinkList.positioni(varray[3]));   
+                      boundaryDoubleLinkList.addi(new vertexBoundary(gridPointsArray[v].x,gridPointsArray[v].y,v,varray[3].index,varray[0].index,GridMeshFacesArray.length),boundaryDoubleLinkList.positioni(varray[3]));   
                       varray[3].next=v;
-                      varray[0].prev=v; GridMeshFacesArray.push([TableHashIndextoPosition[varray[2].index.toString()],TableHashIndextoPosition[varray[3].index.toString()],GridMeshVertexArray.length-1]);
+                      varray[0].prev=v;
+                      
+                      if(addtoGrid){ GridMeshFacesArray.push([TableHashIndextoPosition[varray[2].index.toString()],TableHashIndextoPosition[varray[3].index.toString()],GridMeshVertexArray.length-1]);
                       GridMeshFacesArray.push([TableHashIndextoPosition[varray[1].index.toString()],TableHashIndextoPosition[varray[2].index.toString()],GridMeshVertexArray.length-1]);
                       GridMeshFacesArray.push([TableHashIndextoPosition[varray[0].index.toString()],TableHashIndextoPosition[varray[1].index.toString()],GridMeshVertexArray.length-1]);
+                      }
+                                    
                   }
                   else{
                       boundaryDoubleLinkList.remove(boundaryDoubleLinkList.positioni(varray[2]));
                       boundaryDoubleLinkList.remove(boundaryDoubleLinkList.positioni(varray[1]));
-                      boundaryDoubleLinkList.addi(new vertexBoundary(gridPointsArray[v].x,gridPointsArray[v].y,v,varray[0].index,varray[3].index,0),boundaryDoubleLinkList.positioni(varray[0]));   
+                      boundaryDoubleLinkList.addi(new vertexBoundary(gridPointsArray[v].x,gridPointsArray[v].y,v,varray[0].index,varray[3].index,GridMeshFacesArray.length),boundaryDoubleLinkList.positioni(varray[0]));   
                       varray[0].next=v;
-                      varray[3].prev=v;                                                                    GridMeshFacesArray.push([TableHashIndextoPosition[varray[3].index.toString()],TableHashIndextoPosition[varray[2].index.toString()],GridMeshVertexArray.length-1]);
+                      varray[3].prev=v;    
+                      
+                      if(addtoGrid){ GridMeshFacesArray.push([TableHashIndextoPosition[varray[3].index.toString()],TableHashIndextoPosition[varray[2].index.toString()],GridMeshVertexArray.length-1]);
                       GridMeshFacesArray.push([TableHashIndextoPosition[varray[2].index.toString()],TableHashIndextoPosition[varray[1].index.toString()],GridMeshVertexArray.length-1]);
                       GridMeshFacesArray.push([TableHashIndextoPosition[varray[1].index.toString()],TableHashIndextoPosition[varray[0].index.toString()],GridMeshVertexArray.length-1]);
+                      }
                   }
 
                   break;
@@ -409,23 +430,29 @@ function growVertex(varray,boundaryDoubleLinkList,v){
                       boundaryDoubleLinkList.remove(boundaryDoubleLinkList.positioni(varray[2]));
                       boundaryDoubleLinkList.remove(boundaryDoubleLinkList.positioni(varray[1]));
 
-                      boundaryDoubleLinkList.addi(new vertexBoundary(gridPointsArray[v].x,gridPointsArray[v].y,v,varray[4].index,varray[0].index,0),boundaryDoubleLinkList.positioni(varray[4]));   
+                      boundaryDoubleLinkList.addi(new vertexBoundary(gridPointsArray[v].x,gridPointsArray[v].y,v,varray[4].index,varray[0].index,GridMeshFacesArray.length),boundaryDoubleLinkList.positioni(varray[4]));   
                       varray[4].next=v;
-                      varray[0].prev=v;                                                                    GridMeshFacesArray.push([TableHashIndextoPosition[varray[3].index.toString()],TableHashIndextoPosition[varray[4].index.toString()],GridMeshVertexArray.length-1]);
+                      varray[0].prev=v;        
+                      
+                      if(addtoGrid){ GridMeshFacesArray.push([TableHashIndextoPosition[varray[3].index.toString()],TableHashIndextoPosition[varray[4].index.toString()],GridMeshVertexArray.length-1]);
                       GridMeshFacesArray.push([TableHashIndextoPosition[varray[2].index.toString()],TableHashIndextoPosition[varray[3].index.toString()],GridMeshVertexArray.length-1]);
                       GridMeshFacesArray.push([TableHashIndextoPosition[varray[1].index.toString()],TableHashIndextoPosition[varray[2].index.toString()],GridMeshVertexArray.length-1]);
                       GridMeshFacesArray.push([TableHashIndextoPosition[varray[0].index.toString()],TableHashIndextoPosition[varray[1].index.toString()],GridMeshVertexArray.length-1]);
+                      }
                   }
                   else{
                       boundaryDoubleLinkList.remove(boundaryDoubleLinkList.positioni(varray[3]));
                       boundaryDoubleLinkList.remove(boundaryDoubleLinkList.positioni(varray[2]));
                       boundaryDoubleLinkList.remove(boundaryDoubleLinkList.positioni(varray[1]));
-                      boundaryDoubleLinkList.addi(new vertexBoundary(gridPointsArray[v].x,gridPointsArray[v].y,v,varray[0].index,varray[4].index,0),boundaryDoubleLinkList.positioni(varray[0]));   
+                      boundaryDoubleLinkList.addi(new vertexBoundary(gridPointsArray[v].x,gridPointsArray[v].y,v,varray[0].index,varray[4].index,GridMeshFacesArray.length),boundaryDoubleLinkList.positioni(varray[0]));   
                       varray[0].next=v;
-                      varray[4].prev=v;                                                                   GridMeshFacesArray.push([TableHashIndextoPosition[varray[4].index.toString()],TableHashIndextoPosition[varray[3].index.toString()],GridMeshVertexArray.length-1]);
+                      varray[4].prev=v;       
+                      
+                      if(addtoGrid){ GridMeshFacesArray.push([TableHashIndextoPosition[varray[4].index.toString()],TableHashIndextoPosition[varray[3].index.toString()],GridMeshVertexArray.length-1]);
                       GridMeshFacesArray.push([TableHashIndextoPosition[varray[3].index.toString()],TableHashIndextoPosition[varray[2].index.toString()],GridMeshVertexArray.length-1]);
                       GridMeshFacesArray.push([TableHashIndextoPosition[varray[2].index.toString()],TableHashIndextoPosition[varray[1].index.toString()],GridMeshVertexArray.length-1]);
                       GridMeshFacesArray.push([TableHashIndextoPosition[varray[1].index.toString()],TableHashIndextoPosition[varray[0].index.toString()],GridMeshVertexArray.length-1]);
+                      }
                   }
 
                   break;                      
@@ -435,27 +462,32 @@ function growVertex(varray,boundaryDoubleLinkList,v){
                       boundaryDoubleLinkList.remove(boundaryDoubleLinkList.positioni(varray[3]));
                       boundaryDoubleLinkList.remove(boundaryDoubleLinkList.positioni(varray[2]));
                       boundaryDoubleLinkList.remove(boundaryDoubleLinkList.positioni(varray[1]));
-                      boundaryDoubleLinkList.addi(new vertexBoundary(gridPointsArray[v].x,gridPointsArray[v].y,v,varray[5].index,varray[0].index,0),boundaryDoubleLinkList.positioni(varray[5]));   
+                      boundaryDoubleLinkList.addi(new vertexBoundary(gridPointsArray[v].x,gridPointsArray[v].y,v,varray[5].index,varray[0].index,GridMeshFacesArray.length),boundaryDoubleLinkList.positioni(varray[5]));   
                       varray[5].next=v;
-                      varray[0].prev=v;                                                                    GridMeshFacesArray.push([TableHashIndextoPosition[varray[4].index.toString()],TableHashIndextoPosition[varray[5].index.toString()],GridMeshVertexArray.length-1]);
+                      varray[0].prev=v;             
+              
+                      if(addtoGrid){ GridMeshFacesArray.push([TableHashIndextoPosition[varray[4].index.toString()],TableHashIndextoPosition[varray[5].index.toString()],GridMeshVertexArray.length-1]);
                       GridMeshFacesArray.push([TableHashIndextoPosition[varray[3].index.toString()],TableHashIndextoPosition[varray[4].index.toString()],GridMeshVertexArray.length-1]);
                       GridMeshFacesArray.push([TableHashIndextoPosition[varray[2].index.toString()],TableHashIndextoPosition[varray[3].index.toString()],GridMeshVertexArray.length-1]);
                       GridMeshFacesArray.push([TableHashIndextoPosition[varray[1].index.toString()],TableHashIndextoPosition[varray[2].index.toString()],GridMeshVertexArray.length-1]);
                       GridMeshFacesArray.push([TableHashIndextoPosition[varray[0].index.toString()],TableHashIndextoPosition[varray[1].index.toString()],GridMeshVertexArray.length-1]);
+                      }
                   }
                   else{
                       boundaryDoubleLinkList.remove(boundaryDoubleLinkList.positioni(varray[4]));
                       boundaryDoubleLinkList.remove(boundaryDoubleLinkList.positioni(varray[3]));
                       boundaryDoubleLinkList.remove(boundaryDoubleLinkList.positioni(varray[2]));
                       boundaryDoubleLinkList.remove(boundaryDoubleLinkList.positioni(varray[1]));
-                      boundaryDoubleLinkList.addi(new vertexBoundary(gridPointsArray[v].x,gridPointsArray[v].y,v,varray[0].index,varray[5].index,0),boundaryDoubleLinkList.positioni(varray[0]));   
+                      boundaryDoubleLinkList.addi(new vertexBoundary(gridPointsArray[v].x,gridPointsArray[v].y,v,varray[0].index,varray[5].index,GridMeshFacesArray.length),boundaryDoubleLinkList.positioni(varray[0]));   
                       varray[0].next=v;
                       varray[5].prev=v;
-                      GridMeshFacesArray.push([TableHashIndextoPosition[varray[5].index.toString()],TableHashIndextoPosition[varray[4].index.toString()],GridMeshVertexArray.length-1]);
+                     
+                      if(addtoGrid){ GridMeshFacesArray.push([TableHashIndextoPosition[varray[5].index.toString()],TableHashIndextoPosition[varray[4].index.toString()],GridMeshVertexArray.length-1]);
                       GridMeshFacesArray.push([TableHashIndextoPosition[varray[4].index.toString()],TableHashIndextoPosition[varray[3].index.toString()],GridMeshVertexArray.length-1]);
                       GridMeshFacesArray.push([TableHashIndextoPosition[varray[3].index.toString()],TableHashIndextoPosition[varray[2].index.toString()],GridMeshVertexArray.length-1]);
                       GridMeshFacesArray.push([TableHashIndextoPosition[varray[2].index.toString()],TableHashIndextoPosition[varray[1].index.toString()],GridMeshVertexArray.length-1]);
                       GridMeshFacesArray.push([TableHashIndextoPosition[varray[1].index.toString()],TableHashIndextoPosition[varray[0].index.toString()],GridMeshVertexArray.length-1]);
+                      }
                   }
                    break;
       }     
@@ -556,7 +588,6 @@ else{ //console.log(feed[1]);
     var stackBoundayToProcess=getOutVertexFromBoundary(P,feed[1]);
     //console.log(stackBoundayToProcess);
     var finalBoundary=toDoubleLinkList(feed[1]);
-
     while(stackBoundayToProcess.length!=0){
       var v=stackBoundayToProcess.shift();
       //console.log(v);    
@@ -574,6 +605,9 @@ else{ //console.log(feed[1]);
 
     }
     gridBoundary=finalBoundary.toArray();
+    /*var VertexInteriores=toThreeVector3(GridMeshVertexArray); 
+    var FacesVertices=createMesh(GridMeshFacesArray,offsetZ(VertexInteriores,parseFloat(sizeGrid)),offsetZ(VertexInteriores,-sizeGrid)); 
+    hemesh.fromFaceVertexArray(FacesVertices[0],FacesVertices[1]);*/
     if(howgrow=='Optimize'){     
         console.log("opt ative");
         OptimizeValence();
@@ -730,16 +764,6 @@ for(var i=0;i<m;i++){
         }
     }
 }
-/*
-var pointGeometry = new THREE.Geometry();
-var pointmaterial = new THREE.PointsMaterial( {color: 0x27B327, size: 10.0, sizeAttenuation: false, alphaTest: 0.5 } );
-var inde= findNearGridVertex(pointSample[1],indexFromBoundary(gridBoundary));
-pointGeometry.vertices.push(gridPointsArray[inde]);
-var particles=new THREE.Points(pointGeometry,pointmaterial);
-setup.scene.add(particles);
-*/
-//console.log(AssociateGridPoints);
-//return [AssociateGridPoints,pointSampleIndex];
 }
 function drawAssociated(){
  MappingVerteToStroke();
@@ -765,259 +789,290 @@ function drawAssociated(){
  setup.scene.add(Bgeometry);
 }
 function OptimizeValence(){
-//vertex is of type VertexBounday class
-function dirDiff(vertex){
-    var i=vertex.index;
-    var neiborhoodIndex=getNeiboorHoodIndex(i);
+        //vertex is of type VertexBounday class
+        function dirDiff(vertex){
+            var i=vertex.index;
+            var neiborhoodIndex=getNeiboorHoodIndex(i);
 
-    var indexP=neiborhoodIndex.indexOf(vertex.prev);
-    if(indexP!=-1){
-        for(var k=indexP+1;k<6+indexP;k++){
-            if(vertex.next==neiborhoodIndex[k%6]){
-                var step=k-indexP;
-                if( step==2 || step==4){
+            var indexP=neiborhoodIndex.indexOf(vertex.prev);
+            if(indexP!=-1){
+                for(var k=indexP+1;k<6+indexP;k++){
+                    if(vertex.next==neiborhoodIndex[k%6]){
+                        var step=k-indexP;
+                        if( step==2 || step==4){
+                            return 1;
+                        }
+                        if( step==1 || step==5){
+                            return 2;
+                        }
+                        if( step==3){
+                            return 0;
+                        }
+                    }  
+                }
+            }            
+            else{
+                console.log(neiborhoodIndex);
+                console.log(i);
+                console.log(gridI[i]);
+                //console.log(indexFromBoundary(gridBoundary));
+                console.log("fatal error");
+                return 0;
+
+            }
+
+        }
+        // array is a array of vertexBoundary elements
+        function errorDC(array){
+            var s=0;
+            for(var i=0;i<array.length;i++){
+                //console.log(dirDiff(array[i]));
+                s=s+dirDiff(array[i]);   
+            }
+            return s;
+
+        }
+        //console.log(errorDC(gridBoundary));
+   
+        function drawBoundary(array){
+                 var Bgeometry= new THREE.Object3D();
+                 for(var i=0;i<array.length;i++){
+                    var edge=new THREE.Geometry();
+                    edge.vertices.push(gridPointsArray[array[i].index],gridPointsArray[array[i].next]);
+                    var line = new THREE.Line(edge,materialBoundary);
+                    Bgeometry.add(line);    
+                 }
+                 setup.scene.add(Bgeometry);
+
+        }
+
+        function correctCorruptedEdge(dobleListBoundary){
+            var n=dobleListBoundary._length;
+            var toarray=dobleListBoundary.toArray();
+           // var pointGeometry = new THREE.Geometry();
+            //var pointmaterial = new THREE.PointsMaterial( {color: 0x000000, size: 10.0, sizeAttenuation: false, alphaTest: 0.5 } );
+            for(var i=0;i<n;i++){
+                var vertex=toarray[i];
+                if(dirDiff(vertex)==2){
+                    //console.log("corruptes found");
+                    //console.log(vertex);
+                    //pointGeometry.vertices.push(gridPointsArray[vertex.index]);    
+                    if(dirDiff(toarray[(i-1+n)%n])!=0 || dirDiff(toarray[(i+1)%n])!=0){
+                        //console.log(dobleListBoundary.positioni(vertex));
+                        //console.log(i);
+                        dobleListBoundary.remove(dobleListBoundary.positioni(vertex));    
+                        toarray[(i-1+n)%n].next=vertex.next;
+                        toarray[i].prev=vertex.prev;
+                       /* var he=hemesh.vertexAdjacency[TableHashIndextoPosition[vertex.index.toString()]];
+                        var facehe=hemesh.halfedgeAdjacency[he].face;*/
+                        console.log(GridMeshVertexArray.length,GridMeshFacesArray.length);
+                        resetGridMeshArrays(TableHashIndextoPosition[vertex.index.toString()],vertex.indexarray);
+                        console.log(GridMeshVertexArray.length,GridMeshFacesArray.length);
+                    }
+                }
+            }
+            //var particles=new THREE.Points(pointGeometry,pointmaterial);
+            //var particlesb=new THREE.Points(new THREE.Geometry([gridPointsArray[arrayBoundary[0].index]]),pointmaterialblack);
+           // setup.scene.add(particles);
+
+        }
+        //check if a vertex of index v in P is convex or concave
+        // obtuse if return 1
+        // convex if return -1
+        // in a line if return 0
+        function IsReflex(v,P) {
+            var orient;
+            var n=P.length;
+            //console.log(n);
+           if (v==0){
+                orient=Orientation(P[n-1],P[v],P[v+1]);   
+           }  	
+           else if (v==n-1) {
+            orient=Orientation(P[n-2],P[v],P[0]);
+           }
+           else {
+            orient=Orientation(P[v-1],P[v],P[v+1]);
+           }
+           return orient; 	
+        }
+         //Orientation operator for three 2d points
+         //sig( |	1  1  1 |
+         //		 | a0	b0 c0|
+         //     | a1 b1 c1| )
+        function Orientation(a,b,c) {
+                var det=b.x*c.y-a.x*c.y-b.y*c.x+a.y*c.x+a.x*b.y-a.y*b.x;
+                if (det>0.0001) {
                     return 1;
                 }
-                if( step==1 || step==5){
-                    return 2;
-                }
-                if( step==3){
-                    return 0;
-                }
-            }  
-        }
-    }            
-    else{
-        console.log(neiborhoodIndex);
-        console.log(i);
-        console.log(gridI[i]);
-        //console.log(indexFromBoundary(gridBoundary));
-        console.log("fatal error");
-        return 0;
-
-    }
-
-}
-// array is a array of vertexBoundary elements
-function errorDC(array){
-    var s=0;
-    for(var i=0;i<array.length;i++){
-        //console.log(dirDiff(array[i]));
-        s=s+dirDiff(array[i]);   
-    }
-    return s;
-
-}
-//console.log(errorDC(gridBoundary));
-/*function indexFromBoundary(P){
-        var indexP=[];
-        for(var i=0;i<P.length;i++){
-            indexP[i]=P[i].index;
-        }
-        return indexP;
-}*/
-function drawBoundary(array){
-         var Bgeometry= new THREE.Object3D();
-         for(var i=0;i<array.length;i++){
-            var edge=new THREE.Geometry();
-            edge.vertices.push(gridPointsArray[array[i].index],gridPointsArray[array[i].next]);
-            var line = new THREE.Line(edge,materialBoundary);
-            Bgeometry.add(line);    
+                else if (det>0) {
+                     return 0;
+               }
+               else {
+                return -1;
+               }	
          }
-         setup.scene.add(Bgeometry);
+        function correctConvexConcaveConvexSequence(arrayBoundary){
+            var arrayconcavidade=[];
+            var ternasgroup=[];
+            //var dobleListBoundary=toDoubleLinkList(arrayBoundary);
+            var ternas=[];
+            var pointGeometry = new THREE.Geometry();
+            var pointmaterial = new THREE.PointsMaterial( {color: 0x27B327, size: 10.0, sizeAttenuation: false, alphaTest: 0.5 } );
+
+            for(var i=0;i<arrayBoundary.length;i++){
+                arrayconcavidade[i]=IsReflex(i,arrayBoundary);
+            }
+            for(var i=0;i<arrayconcavidade.length;i++){
+                if(arrayconcavidade[i]!=0){
+                    ternas.push(i);
+                }
+            }
+            //console.log(ternas.length);
+            var indexObtuseinTernas=[];
+            for(var i=0;i<ternas.length;i++){
+                if(arrayconcavidade[ternas[i]]==1){
+                    indexObtuseinTernas.push(i);
+                }
+            }
+            for(var i=0;i<indexObtuseinTernas.length;i++){
+                var n=ternas.length;   
+                if((arrayconcavidade[ternas[(indexObtuseinTernas[i]-1+n)%n]]==-1) && (arrayconcavidade[ternas[(indexObtuseinTernas[i]+1)%n]]==-1)){
+                  pointGeometry.vertices.push(gridPointsArray[arrayBoundary[ternas[indexObtuseinTernas[i]]].index]);    
+                }
+            }
+            /*for(var i=0;i<indexObtuseinTernas.length;i++){
+                pointGeometry.vertices.push(gridPointsArray[arrayBoundary[ternas[indexObtuseinTernas[i]]].index]);
+            }*/
+            var particles=new THREE.Points(pointGeometry,pointmaterial);
+            //var particlesb=new THREE.Points(new THREE.Geometry([gridPointsArray[arrayBoundary[0].index]]),pointmaterialblack);
+            setup.scene.add(particles);
+            //setup.scene.add(particlesb);
+           // console.log(ternas);
+           // console.log(ternasgroup);
+
+            console.log("pasada");
+        }
+        function OneStepFromBoundary(bound){
+                var result=[];
+                for(var j=0;j<bound.length;j++){
+                    var i=bound[j].index;
+                    var ibound=indexFromBoundary(bound);
+                    var neiborhoodIndex=getNeiboorHoodIndex(i);
+                    //console.log(neiborhoodIndex);
+                    for(var k=0;k<6;k++){
+                        if(neiborhoodIndex[k]>-1 && neiborhoodIndex[k]<=(height+1)*(width+1)){
+                              if(!isInPolygon2(bound,gridPointsArray[neiborhoodIndex[k]]) && ibound.indexOf(neiborhoodIndex[k])==-1){
+                                   result.push(neiborhoodIndex[k]);
+                                }       
+                        }
+                    }
+                }
+                return result.filter(function(elem, pos, self) {return self.indexOf(elem) == pos;});
+        }
+        function validAdjacentVertex(feedBound,v,i){
+               // var P=getBoundary2D(pointSample);
+               var neiborhoodIndex=getNeiboorHoodIndex(i);
+                    //console.log(neiborhoodIndex);
+                var vertexIntersection=[];
+                var iP=indexFromBoundary(feedBound);
+                var inicio=0;
+                for(var j=0;j<6;j++){
+                        var indexP=iP.indexOf(neiborhoodIndex[j]);
+                        if(indexP==-1){
+                            inicio=j;
+                            break;
+                        }
+                }
+                    //console.log("inicio ",inicio);
+                for(var j=inicio;j<inicio+6;j++){
+                        //console.log("iter ", j%6);
+                        var indexP=iP.indexOf(neiborhoodIndex[j%6]);
+                        if(indexP!=-1){
+                            vertexIntersection.push(feedBound[indexP]);
+                        }
+                }
+                if(vertexIntersection.length>1){
+                        //return indexFromBoundary(vertexIntersection);    
+                        return vertexIntersection;    
+                }
+                else{
+                        //console.log("nao cheguei");
+                        return vertexIntersection;
+                }
+        } 
+    
+    
+    
+    var finish=false;
+    var t=0;
+    var finalBoundary=toDoubleLinkList(gridBoundary);
+    correctCorruptedEdge(finalBoundary);
+    gridBoundary=finalBoundary.toArray(); 
+    while(t<0){
+         moreOneStep=OneStepFromBoundary(gridBoundary);
+         //console.log(moreOneStep);
+         //console.log(finalBoundary.toArray());
+         //console.log(gridBoundary);
+         //console.log(indexFromBoundary(finalBoundary.toArray()));
+         //console.log(indexFromBoundary(gridBoundary));
+         var error=errorDC(gridBoundary);
+         console.log(error);
+         //var t=0;
+         while(moreOneStep.length!=0){
+             var v=moreOneStep.shift();
+             var finalBoundary=toDoubleLinkList(gridBoundary);
+             correctCorruptedEdge(finalBoundary);
+             //console.log(finalBoundary.toArray().length);
+             var varray=validAdjacentVertex(finalBoundary.toArray(),gridPointsArray[v],v);
+             if(varray.length<2){continue;}    
+             //var finalBoundary=toDoubleLinkList(gridBoundary.slice());
+             //console.log(finalBoundary.toArray());
+             growVertex(varray,finalBoundary,v,false);
+             //console.log(finalBoundary.toArray().length);
+             var errorAtual=errorDC(finalBoundary.toArray());
+             if (error>errorAtual){
+                //t++; 
+                //console.log("entrei"); 
+                error=errorAtual;
+                gridBoundary=finalBoundary.toArray(); 
+             }     
+         }
+         t++;
+         //if(t==0){finish=true;}
+         //moreOneStep=OneStepFromBoundary(gridBoundary);
+    }
+    //correctConvexConcaveConvexSequence(gridBoundary);
+    //console.log(indexFromBoundary(gridBoundary));
+    //console.log(error);
+    //drawAssociated();
+    //drawBoundary(gridBoundary);
 
 }
-
-function correctCorruptedEdge(dobleListBoundary){
-    var n=dobleListBoundary._length;
-    var toarray=dobleListBoundary.toArray();
-   // var pointGeometry = new THREE.Geometry();
-    //var pointmaterial = new THREE.PointsMaterial( {color: 0x000000, size: 10.0, sizeAttenuation: false, alphaTest: 0.5 } );
+function resetGridMeshArrays(v,f){
+    var n=GridMeshVertexArray.length-1;
+    var m=GridMeshFacesArray.length;
+    var resultV=[];
+    var resultF=[];
+    
     for(var i=0;i<n;i++){
-        var vertex=toarray[i];
-        if(dirDiff(vertex)==2){
-            //console.log("corruptes found");
-            //console.log(vertex);
-            //pointGeometry.vertices.push(gridPointsArray[vertex.index]);    
-            if(dirDiff(toarray[(i-1+n)%n])!=0 || dirDiff(toarray[(i+1)%n])!=0){
-                //console.log(dobleListBoundary.positioni(vertex));
-                //console.log(i);
-                dobleListBoundary.remove(dobleListBoundary.positioni(vertex));    
-                toarray[(i-1+n)%n].next=vertex.next;
-                toarray[i].prev=vertex.prev;
-            }
-        }
-    }
-    //var particles=new THREE.Points(pointGeometry,pointmaterial);
-    //var particlesb=new THREE.Points(new THREE.Geometry([gridPointsArray[arrayBoundary[0].index]]),pointmaterialblack);
-   // setup.scene.add(particles);
-
-}
-//check if a vertex of index v in P is convex or concave
-// obtuse if return 1
-// convex if return -1
-// in a line if return 0
-function IsReflex(v,P) {
-    var orient;
-    var n=P.length;
-    //console.log(n);
-   if (v==0){
-        orient=Orientation(P[n-1],P[v],P[v+1]);   
-   }  	
-   else if (v==n-1) {
-    orient=Orientation(P[n-2],P[v],P[0]);
-   }
-   else {
-    orient=Orientation(P[v-1],P[v],P[v+1]);
-   }
-   return orient; 	
-}
- //Orientation operator for three 2d points
- //sig( |	1  1  1 |
- //		 | a0	b0 c0|
- //     | a1 b1 c1| )
- function Orientation(a,b,c) {
-        var det=b.x*c.y-a.x*c.y-b.y*c.x+a.y*c.x+a.x*b.y-a.y*b.x;
-        if (det>0.0001) {
-            return 1;
-        }
-        else if (det>0) {
-             return 0;
-       }
-       else {
-        return -1;
-       }	
- }
-function correctConvexConcaveConvexSequence(arrayBoundary){
-    var arrayconcavidade=[];
-    var ternasgroup=[];
-    //var dobleListBoundary=toDoubleLinkList(arrayBoundary);
-    var ternas=[];
-    var pointGeometry = new THREE.Geometry();
-    var pointmaterial = new THREE.PointsMaterial( {color: 0x27B327, size: 10.0, sizeAttenuation: false, alphaTest: 0.5 } );
-
-    for(var i=0;i<arrayBoundary.length;i++){
-        arrayconcavidade[i]=IsReflex(i,arrayBoundary);
-    }
-    for(var i=0;i<arrayconcavidade.length;i++){
-        if(arrayconcavidade[i]!=0){
-            ternas.push(i);
-        }
-    }
-    //console.log(ternas.length);
-    var indexObtuseinTernas=[];
-    for(var i=0;i<ternas.length;i++){
-        if(arrayconcavidade[ternas[i]]==1){
-            indexObtuseinTernas.push(i);
-        }
-    }
-    for(var i=0;i<indexObtuseinTernas.length;i++){
-        var n=ternas.length;   
-        if((arrayconcavidade[ternas[(indexObtuseinTernas[i]-1+n)%n]]==-1) && (arrayconcavidade[ternas[(indexObtuseinTernas[i]+1)%n]]==-1)){
-          pointGeometry.vertices.push(gridPointsArray[arrayBoundary[ternas[indexObtuseinTernas[i]]].index]);    
-        }
-    }
-    /*for(var i=0;i<indexObtuseinTernas.length;i++){
-        pointGeometry.vertices.push(gridPointsArray[arrayBoundary[ternas[indexObtuseinTernas[i]]].index]);
-    }*/
-    var particles=new THREE.Points(pointGeometry,pointmaterial);
-    //var particlesb=new THREE.Points(new THREE.Geometry([gridPointsArray[arrayBoundary[0].index]]),pointmaterialblack);
-    setup.scene.add(particles);
-    //setup.scene.add(particlesb);
-   // console.log(ternas);
-   // console.log(ternasgroup);
-
-    console.log("pasada");
-}
-function OneStepFromBoundary(bound){
-        var result=[];
-        for(var j=0;j<bound.length;j++){
-            var i=bound[j].index;
-            var ibound=indexFromBoundary(bound);
-            var neiborhoodIndex=getNeiboorHoodIndex(i);
-            //console.log(neiborhoodIndex);
-            for(var k=0;k<6;k++){
-                if(neiborhoodIndex[k]>-1 && neiborhoodIndex[k]<=(height+1)*(width+1)){
-                      if(!isInPolygon2(bound,gridPointsArray[neiborhoodIndex[k]]) && ibound.indexOf(neiborhoodIndex[k])==-1){
-                           result.push(neiborhoodIndex[k]);
-                        }       
-                }
-            }
-        }
-        return result.filter(function(elem, pos, self) {return self.indexOf(elem) == pos;});
-}
-function validAdjacentVertex(feedBound,v,i){
-       // var P=getBoundary2D(pointSample);
-       var neiborhoodIndex=getNeiboorHoodIndex(i);
-            //console.log(neiborhoodIndex);
-        var vertexIntersection=[];
-        var iP=indexFromBoundary(feedBound);
-        var inicio=0;
-        for(var j=0;j<6;j++){
-                var indexP=iP.indexOf(neiborhoodIndex[j]);
-                if(indexP==-1){
-                    inicio=j;
-                    break;
-                }
-        }
-            //console.log("inicio ",inicio);
-        for(var j=inicio;j<inicio+6;j++){
-                //console.log("iter ", j%6);
-                var indexP=iP.indexOf(neiborhoodIndex[j%6]);
-                if(indexP!=-1){
-                    vertexIntersection.push(feedBound[indexP]);
-                }
-        }
-        if(vertexIntersection.length>1){
-                //return indexFromBoundary(vertexIntersection);    
-                return vertexIntersection;    
+        if(i<v){
+            resultV.push(GridMeshVertexArray[i]);
         }
         else{
-                //console.log("nao cheguei");
-                return vertexIntersection;
+            resultV.push(GridMeshVertexArray[i+1]);
         }
-} 
-
-var finish=false;
-var t=0;
-
-while(t<3){
-     moreOneStep=OneStepFromBoundary(gridBoundary);
-     //console.log(moreOneStep);
-     //console.log(finalBoundary.toArray());
-     //console.log(gridBoundary);
-     //console.log(indexFromBoundary(finalBoundary.toArray()));
-     //console.log(indexFromBoundary(gridBoundary));
-     var error=errorDC(gridBoundary);
-     console.log(error);
-     //var t=0;
-     while(moreOneStep.length!=0){
-         var v=moreOneStep.shift();
-         var finalBoundary=toDoubleLinkList(gridBoundary);
-         correctCorruptedEdge(finalBoundary);
-         //console.log(finalBoundary.toArray().length);
-         var varray=validAdjacentVertex(finalBoundary.toArray(),gridPointsArray[v],v);
-         if(varray.length<2){continue;}    
-         //var finalBoundary=toDoubleLinkList(gridBoundary.slice());
-         //console.log(finalBoundary.toArray());
-         growVertex(varray,finalBoundary,v);
-         //console.log(finalBoundary.toArray().length);
-         var errorAtual=errorDC(finalBoundary.toArray());
-         if (error>errorAtual){
-            //t++; 
-            //console.log("entrei"); 
-            error=errorAtual;
-            gridBoundary=finalBoundary.toArray(); 
-         }     
-     }
-     t++;
-     //if(t==0){finish=true;}
-     //moreOneStep=OneStepFromBoundary(gridBoundary);
-}
-//correctConvexConcaveConvexSequence(gridBoundary);
-//console.log(indexFromBoundary(gridBoundary));
-//console.log(error);
-//drawAssociated();
-//drawBoundary(gridBoundary);
-
+    }
+    for(var j=0;j<m;j++){
+        if(j!=f){
+          var a=GridMeshFacesArray[j][0];
+          var b=GridMeshFacesArray[j][1];
+          var c=GridMeshFacesArray[j][2];
+          if(a>v){a=a-1;}
+          if(b>v){b=b-1;}
+          if(c>v){c=c-1;}    
+          resultF.push([a,b,c]);  
+        }
+    }
+    GridMeshVertexArray=resultV;
+    GridMeshFacesArray=resultF;
 }

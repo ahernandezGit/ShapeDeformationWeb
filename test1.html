@@ -81,10 +81,13 @@
         
         var gridBoundary=[];
         var gridInterior=[];
-        
+        //var hemesh = new Hemesh();
         var GridMeshVertexArray=[];
         var GridMeshFacesArray=[];
+        //store index on GridMeshVertexArray of the index in GridPointArray
         var TableHashIndextoPosition=[];
+        //store index on GridMeshFacesArray of the index in GridMeshVertexArray
+        var TableHashVertextoFace=[];
         function mousePosition3D(event){
             // calculate mouse position in normalized device coordinates
             // (-1 to +1) for both components
@@ -152,6 +155,7 @@
               LineSample = new THREE.Object3D();
               LineStroke = new THREE.Object3D();
               gridgeometry = new THREE.Object3D();
+              hemesh=new Hemesh();
               gridBoundary=[];
               gridInterior=[];
               GridMeshVertexArray=[];

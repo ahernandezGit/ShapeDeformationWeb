@@ -33,11 +33,10 @@ d3.select('#stepButton').on('click',function () {
  });
  d3.select('#inflationButton').on('click',function () {
     // Create the halfedge mesh from an OBJ
-    var hemesh = new Hemesh();
-    //var hemesh2 = new Hemesh();
+    var hemesh=new Hemesh();
     var VertexInteriores=toThreeVector3(GridMeshVertexArray); 
-    var arraynow=createMesh(GridMeshFacesArray,offsetZ(VertexInteriores,sizeGrid),offsetZ(VertexInteriores,-sizeGrid)); 
-    hemesh.fromFaceVertexArray(arraynow[0],arraynow[1]);
+    var FacesVertices=createMesh(GridMeshFacesArray,offsetZ(VertexInteriores,parseFloat(sizeGrid)),offsetZ(VertexInteriores,-sizeGrid)); 
+    hemesh.fromFaceVertexArray(FacesVertices[0],FacesVertices[1]);
     var wireframeLines = hemesh.toWireframeGeometry();
      
     var geo = hemesh.toGeometry();

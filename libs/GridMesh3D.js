@@ -65,7 +65,7 @@ function createMesh(faces,back,front){
     for(var i=0;i<faces.length;i++){
         fac.push([faces[i][0]+m,faces[i][1]+m,faces[i][2]+m]);
     }
-    console.log(fac.length,vtx.length);
+    //console.log(fac.length,vtx.length);
     //for(var i=0;i<)
     return [fac,vtx];
 }			
