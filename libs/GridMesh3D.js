@@ -69,4 +69,38 @@ function createMesh(faces,back,front){
     //for(var i=0;i<)
     return [fac,vtx];
 }			
+function applyFairing(step,mesh,hemesh) {
+            var star0 = hemesh.hodgeStar0Form();
+            var L = hemesh.laplacian();
+            var A = numeric.ccsadd(star0, numeric.ccsmul(L, step));
+            var rhs = hemesh.dualVertexMatrix();
 
+            var px = [];
+            var py = [];
+            var pz = [];
+            for(var i=0; i < rhs.length; ++i) {
+                px.push([rhs[i][0]]);
+                py.push([rhs[i][1]]);
+                pz.push([rhs[i][2]]);
+            }
+
+            var LU = numeric.LU(numeric.ccsFull(A));
+            var x = numeric.solve(numeric.ccsFull(A), px);
+            var y = numeric.solve(numeric.ccsFull(A), py);
+            var z = numeric.solve(numeric.ccsFull(A), pz);
+
+            for(var i=0; i < x.length; ++i) {
+                hemesh.moveVertexTo(i, new THREE.Vector3(x[i], y[i], z[i]));
+            }
+
+            mesh.geometry.verticesNeedUpdate = true;
+
+            setup.scene.remove(wireframe);
+            wireframeLines = hemesh.toWireframeGeometry();
+            wireframe = new THREE.Line(wireframeLines, new THREE.LineBasicMaterial({
+                color: 0xff2222,
+                opacity: 0.2,
+                transparent: true,
+            }), THREE.LinePieces);
+            setup.scene.add(wireframe);
+}

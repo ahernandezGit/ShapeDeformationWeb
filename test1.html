@@ -11,8 +11,12 @@
 				padding: 5px;
 				font-family: Monospace;
 				font-size: 13px;
-				text-align: center;
+				text-align: left;
 				font-weight: bold;
+        }
+        .stepbystep{
+            border: 1px black solid;
+            padding-left: 5px;
         }
 	</style>
     
@@ -22,12 +26,13 @@
     <script src="libs/GridMesh2D.js"></script>
     <script src="libs/GridMesh3D.js"></script>
     <script src="libs/hemesh.js"></script>
+    <script src="libs/numeric-1.2.6.js"></script>
 	 <!--<script src="libs/models.js"></script>
      <script src="libs/requestAnimationFrame.js"></script>
      <script src="libs/halfedge.js"></script> 
      <script src="libs/papermodel.js"></script> 
      <script src="libs/pvector.js"></script> 
-     <script src="libs/numeric-1.2.6.js"></script>
+     
      <button id="holesButton" disabled="disabled">Holes</button>
       -->
     <script src="libs/d3.min.js"></script>
@@ -38,21 +43,27 @@
     
 	</head>
 	<body>
-         <div class="overcanvas"><br>
-        <label>Size of the Grid <input id="sizeGridBar" type="range" value="0.1" min="0.05" max="0.5" step="0.01" onchange="updateSizeGrid(this.value)"></label><br>
+        <div class="overcanvas"><br>
+        <label>Size of the Grid <input id="sizeGridBar" type="range" value="0.1" min="0.05" max="0.5" step="0.01" onchange="updateSizeGrid(this.value)"></label><br/>
         <label id="valueexample"> </label><br>
-        <label>Wireframe <input type="checkbox" id="checkWireframe"> </label><br>
-        <p>
-        
-        <button id="stepButton">Second</button>
-        <button id="opButton">Optimize </button>
-        <button id="clearButton">Clear </button>
-        <button id="finishButton">Finish </button>       
-        <button id="reflexButton">Cut </button>
-        <button id="assoButton">Associated </button>
-        <button id="inflationButton">mesh </button>     
-        <button id="drawButton">Draw </button>                                        
-        </p>
+        <label><input type="checkbox" id="checkWireframe">Wireframe </label><br/><br/>
+             
+        <input type="radio" name="gender" id="radioSBS" checked> Step by step <br/>
+        <div id="buttonsSBS" class="stepbystep">
+            <p>
+            <label><input type="checkbox" id="checkGrid">Grid</label><br/>        
+            <button id="opButton">Optimize Boundary </button>
+            <button id="fixButton"> Fix Boundary </button>       
+            <button id="reflexButton">Step by Step </button>
+            <button id="assoButton">Associated</button>
+            <button id="inflationButton">Inflation</button>     
+            <button id="drawButton">Draw</button>    
+            <button id="clearButton">Clear </button>
+            <button id="finishButton">Finish</button>    
+            </p>
+        </div>
+        <input type="radio" name="gender" id="radioFibermesh"> Fibermesh mode <br/>  
+     
         </div>
 	<script>
         var requestIdAnimation;
@@ -67,11 +78,14 @@
         var LineSample = new THREE.Object3D();
         var LineStroke = new THREE.Object3D();
         var gridgeometry = new THREE.Object3D();
+        var checkGrid=document.getElementById("checkGrid");
         gridgeometry.name="Grid2D";
         LineSample.name="LineSample";
         materialReal = new THREE.LineBasicMaterial( { color: 0xff0000, linewidth: 2 } );
         materialSample = new THREE.LineBasicMaterial( { color: 0x0015FF, linewidth: 2 } );
         materialGrid2D = new THREE.LineBasicMaterial( { color: 0xff2222, linewidth: 1 } );
+        materialBoundaryGrid = new THREE.LineBasicMaterial( { color: 0x27B327, linewidth: 2 });
+        
         var width,height,starx,stary;   
         var points = [ ], pointSample = [ ];
         //array of grid points
@@ -88,6 +102,11 @@
         var TableHashIndextoPosition=[];
         //store index on GridMeshFacesArray of the index in GridMeshVertexArray
         var TableHashVertextoFace=[];
+        var ptd=[];
+        
+        // mode of the application
+        var mode="sbs";
+        
         function mousePosition3D(event){
             // calculate mouse position in normalized device coordinates
             // (-1 to +1) for both components
@@ -136,14 +155,23 @@
              //console.log(points);
              Resample(points);
              setup.scene.remove( LineStroke );
-             //LineStroke = new THREE.Object3D();
-             //points=[];
-             //gridgeometry = new THREE.Object3D();
-             DrawGrid();
+             createGrid();
+             drawGrid(true);
+             GrowingFeed();
+             ptd=MappingVerteToStroke();
+             console.log(ptd);
+             drawAssociated();  
+             if(mode=="fiber"){
+               fixBoundaryPoints();    
+               inflationFuntion();
+               OtherMouseControls();     
+             }
+             drawBoundary(gridBoundary);
+             cancelRender=false;
+             render();
         }
         
         function clearScene(){
-             cancelRender=false;
              for( var i = setup.scene.children.length - 1; i >= 0; i--) { 
                  var  obj = setup.scene.children[i];
                  setup.scene.remove(obj);
@@ -152,17 +180,20 @@
               pointSample = [ ];
               gridI=[];
               gridPointsArray=[];
+              ptd=[];
               LineSample = new THREE.Object3D();
               LineStroke = new THREE.Object3D();
               gridgeometry = new THREE.Object3D();
-              hemesh=new Hemesh();
+              //hemesh=new Hemesh();
               gridBoundary=[];
               gridInterior=[];
               GridMeshVertexArray=[];
               GridMeshFacesArray=[];
               TableHashIndextoPosition=[];
+              cancelRender=false;
               render();
          }
+        
         window.addEventListener('resize', onWindowResize, false);
         function onWindowResize() {
             setup.resize();

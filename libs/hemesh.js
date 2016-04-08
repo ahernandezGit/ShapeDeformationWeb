@@ -143,6 +143,13 @@ Hemesh.prototype.addFace = function(vertices) {
 		if(hExists) {
 			if(!this.halfedgeIsOnBoundary(h)) {
 				console.warn("attempting to add face not on boundary: "+vertices.join(" "));
+                var edge=new THREE.Geometry();
+                var materialBoundary = new THREE.LineBasicMaterial( { color: 0xB404AE, linewidth: 2 } );
+                for(var i=0;i<vertices.length;i++){
+                    edge.vertices.push(this.positions[vertices[i]]);
+                }
+                var lines = new THREE.Line(edge,materialBoundary);
+                setup.scene.add(lines);
 				return HEMESH_INVALID_IDX;
 			}
 			
