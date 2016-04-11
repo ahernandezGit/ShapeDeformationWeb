@@ -48,42 +48,68 @@ function inflationFuntion() {
          var sid0=TableHashIndextoPosition[sid.toString()];
          var sid0mirror=interiorPointsNumber+sid0;
          var copyAssociated=gridBoundary[i].associated.slice();
-         copyAssociated.sort();   
+         copyAssociated.sort(function(a, b){return a-b});   
          if(j>1){
             for(var k=0;k<j-1;k++){
                var id1=m+gridBoundary[i].associated[k]; 
                var id2=m+gridBoundary[i].associated[k+1];         
-               hemesh.addFace([id0,id1,id2]);
-               hemesh.addFace([id0mirror,id2,id1]); 
+               //hemesh.addFace([id0,id1,id2]);
+               //hemesh.addFace([id0mirror,id2,id1]);
+               hemesh.addFaces([[id0,id1,id2],[id0mirror,id2,id1]]);
+               //console.log("normais");
+               //console.log("i ",i);    
+               //console.log([id0,id1,id2],[id0mirror,id2,id1]);    
             }
+            
          }
-         else if(i>0){ 
+         else{
                var id3=m+gridBoundary[i].associated[0];
-               var pid=gridBoundary[(i-1)].index;    
+               var pid=gridBoundary[(i-1+n)%n].index;    
                var pid0=TableHashIndextoPosition[pid.toString()];
                var pid0mirror=interiorPointsNumber+pid0;    
-               hemesh.addFace([pid0,id3,id0]);
-               hemesh.addFace([id0,id3,sid0]);
-              // hemesh.addFace([id0mirror,id3,pid0mirror]); 
-              //   hemesh.addFace([sid0mirror,id3,id0mirror]); 
+               /*console.log("log");
+               console.log("i=",i);
+               console.log("associated",gridBoundary[i].associated);
+               console.log("m=",m);
+               console.log("ido=",id0);
+               console.log("sdo=",sid0);
+               console.log("pdo=",pid0);
+               console.log("id3=",id3);*/
+               hemesh.addFaces([[pid0,id3,id0],[id0,id3,sid0],[id0mirror,id3,pid0mirror],[sid0mirror,id3,id0mirror]]);
          }
-         if(orientationSample==-1){
-               
-               var id4=m+gridBoundary[i].associated[gridBoundary[i].associated.length-1];
-               console.log(gridBoundary[i].associated[gridBoundary[i].associated.length-1]);
-               console.log(gridBoundary[i].associated);
-               //hemesh.addFace([id0,id3,sid0]);
-               //hemesh.addFace([sid0mirror,id3,id0mirror]);
-         }
+         
     }
- 
     
+    for(var i=0;i<n;i++){
+         var j=gridBoundary[i].associated.length;
+         var k=gridBoundary[(i+1)%n].associated.length;
+         var m=hemesh.positions.length-r;
+         var AssociatedJ=gridBoundary[i].associated;
+         var AssociatedK=gridBoundary[(i+1)%n].associated;
+         var id=gridBoundary[i].index;    
+         var id0=TableHashIndextoPosition[id.toString()];
+         var id0mirror=interiorPointsNumber+id0;    
+         var sid=gridBoundary[(i+1)%n].index;    
+         var sid0=TableHashIndextoPosition[sid.toString()];
+         var sid0mirror=interiorPointsNumber+sid0;
+         if(j>1 && k>1){
+               var id4;
+               for(var p=0;p<j;p++){
+                   if(AssociatedK.indexOf(AssociatedJ[p])!=-1){
+                       id4=m+AssociatedJ[p];
+                       break;
+                   }
+               } 
+               hemesh.addFaces([[id0,id4,sid0],[sid0mirror,id4,id0mirror]]);    
+       }
+    }
+   
     var wireframeLines = hemesh.toWireframeGeometry();
      
     var geo = hemesh.toGeometry();
     
     var mesh = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({
-        color:  0x27B327,
+        color:  0xd9d9d9,
         polygonOffset: true,
         polygonOffsetFactor: 1,
         side:  THREE.DoubleSide,   
@@ -98,11 +124,19 @@ function inflationFuntion() {
     setup.scene.remove(gridgeometry);
     var Linesam=setup.scene.getObjectByName("LineBoundary");
     var borderl=setup.scene.getObjectByName("borderLine"); 
+    var debuglines=setup.scene.getObjectByName("DebugPoints");
+    var debuglines2=setup.scene.getObjectByName("DebugPointsb");
     if(Linesam!=undefined ){
         Linesam.children=[];
     }
     if(borderl!=undefined ){
         borderl.children=[];
+    }
+    if(debuglines!=undefined ){
+       setup.scene.remove(debuglines);
+    }
+    if(debuglines2!=undefined ){
+       setup.scene.remove(debuglines2);
     }
     gridgeometry={};
     setup.scene.add(mesh,wireframe);
@@ -112,12 +146,13 @@ function inflationFuntion() {
      //setTimeout(cancelAnimation,4000); 
  }
 function OtherMouseControls() {
-     setup.controls.enabled=true;
+     
      points=[];
      console.log(points);
      canvaswindows.on("mousedown",null);
      canvaswindows.on("mouseup",null);
      canvaswindows.on("mousemove",null);
+     setup.controls.enabled=true;
      cancelRender=false;
      render();
      //canvaswindows.removeEventListener('click', onMouseClick);

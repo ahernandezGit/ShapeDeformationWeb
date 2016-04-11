@@ -758,6 +758,8 @@ function MappingVerteToStroke(){
             pointGeometryb.vertices.push(new THREE.Vector3(vertex.x,vertex.y,vertex.z));
             var particles=new THREE.Points(pointGeometry,pointmaterial);
             var particlesb=new THREE.Points(pointGeometryb,pointmaterialblack);
+            particles.name="DebugPoints";
+            particlesb.name="DebugPointsb";
             setup.scene.add(particles);
             setup.scene.add(particlesb);
             console.log("muito espaco");
@@ -815,7 +817,10 @@ function MappingVerteToStroke(){
                          imin=b[j];
                      }
                 }
-                gridBoundary[i].associated.push(imin);
+                if(imin!=gridBoundary[i].associated[0]){
+                    gridBoundary[i].associated.push(imin);    
+                }
+                
                 //console.log(gridBoundary[i].associated);
             }
             

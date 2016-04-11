@@ -133,7 +133,6 @@ Hemesh.prototype.addFace = function(vertices) {
 	var halfedgesNext = [];
 	var exists = [];
 	var nv = vertices.length;
-	
 	for(var i=0; i < nv; ++i) {
 		var v1 = vertices[i];
 		var v2 = vertices[(i+1)%nv];
@@ -148,9 +147,13 @@ Hemesh.prototype.addFace = function(vertices) {
                 for(var i=0;i<vertices.length;i++){
                     edge.vertices.push(this.positions[vertices[i]]);
                 }
+                edge.vertices.push(this.positions[vertices[vertices.length-1]]);
                 var lines = new THREE.Line(edge,materialBoundary);
                 setup.scene.add(lines);
-				return HEMESH_INVALID_IDX;
+                //console.log("haledge ",h);
+                //console.log("v1 ",v1);
+                //console.log("v2 ",v2);  
+                return HEMESH_INVALID_IDX;
 			}
 			
 			halfedgesPrev.push(this.halfedgePrev(h));
