@@ -26,21 +26,20 @@
     <script src="libs/GridMesh2D.js"></script>
     <script src="libs/GridMesh3D.js"></script>
     <script src="libs/hemesh.js"></script>
-    <script src="libs/numeric-1.2.6.js"></script>
 	 <!--<script src="libs/models.js"></script>
      <script src="libs/requestAnimationFrame.js"></script>
      <script src="libs/halfedge.js"></script> 
      <script src="libs/papermodel.js"></script> 
      <script src="libs/pvector.js"></script> 
-     
+     <script src="libs/numeric-1.2.6.js"></script>
      <button id="holesButton" disabled="disabled">Holes</button>
+      <script src="http://mlweb.loria.fr/lalolibworker.js"></script>
+     <script src="libs/numeric-1.2.6.js"></script>
       -->
+    <script  type="application/x-javascript" src="libs/lalolib/lalolib.js"></script>
     <script src="libs/d3.min.js"></script>
     <script src="libs/doubly-linked-list.js"></script>    
     <script src="libs/victor.min.js"></script> 
- 
-    
-    
 	</head>
 	<body>
         <div class="overcanvas"><br>
@@ -92,7 +91,7 @@
         var gridPointsArray=[];
         //array of i values from the grid
         var gridI=[];
-        
+        var hemesh=new Hemesh();
         var gridBoundary=[];
         var gridInterior=[];
         //var hemesh = new Hemesh();
@@ -158,7 +157,7 @@
              createGrid();
              drawGrid(true);
              GrowingFeed();
-             ptd=MappingVerteToStroke();
+             ptd=MappingVerteToStroke2();
              console.log(ptd);
              drawAssociated();  
              if(mode=="fiber"){
@@ -166,9 +165,12 @@
                inflationFuntion();
                OtherMouseControls();     
              }
-             drawBoundary(gridBoundary);
-             cancelRender=false;
-             render();
+             else{
+               drawBoundary(gridBoundary);
+               cancelRender=false;
+               render();    
+             }
+             
         }
         
         function clearScene(){
@@ -184,7 +186,7 @@
               LineSample = new THREE.Object3D();
               LineStroke = new THREE.Object3D();
               gridgeometry = new THREE.Object3D();
-              //hemesh=new Hemesh();
+              hemesh=new Hemesh();
               gridBoundary=[];
               gridInterior=[];
               GridMeshVertexArray=[];
@@ -219,5 +221,6 @@
         canvaswindows.on("mousemove",onMouseMove);
 	</script><canvas width="646" height="645" style="width: 646px; height: 645px;"></canvas>
     <script src="libs/EventsOnTag.js"></script> 
+    <script src="libs/surfaceOptimization.js"></script>     
 	
 </body></html>

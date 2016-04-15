@@ -68,7 +68,8 @@ function createMesh(faces,back,front){
     //console.log(fac.length,vtx.length);
     //for(var i=0;i<)
     return [fac,vtx];
-}			
+}	
+	
 function applyFairing(step,mesh,hemesh) {
             var star0 = hemesh.hodgeStar0Form();
             var L = hemesh.laplacian();

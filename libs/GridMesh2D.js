@@ -47,6 +47,20 @@ function Resample(input_points) {
     updatePointSample(sample);
     drawSampleCurve();
 }
+function ForceClockWiseOrientation(){
+    var x_min=pointSample[0].x;
+    var imin=0;
+    var n=pointSample.length;
+    for (var i=1;i<pointSample.length;i++){
+        if (pointSample[i].x<x_min){
+            x_min=pointSample[i].x;
+            imin=i;
+        }
+    }
+    if(Orientation(pointSample[(imin-1+n)%n],pointSample[imin],pointSample[imin+1])!=-1){
+        pointSample.reverse();
+    }
+}
 function updatePointSample(newPointSample){
     var curve=new THREE.CatmullRomCurve3(newPointSample);
     curve.closed=true;
@@ -57,6 +71,7 @@ function updatePointSample(newPointSample){
      for(var i=0;i<pointSample.length;i++){
         pointSample[i].z=0.0;
     }
+    ForceClockWiseOrientation();
 }
 function drawSampleCurve(){
     var geometrySample=new THREE.Geometry();
@@ -80,7 +95,7 @@ function updateSizeGrid(newVal){
     gridPointsArray=[]; 
     LineSample = new THREE.Object3D();
     gridgeometry = new THREE.Object3D();
-    //hemesh=new Hemesh();
+    hemesh=new Hemesh();
     gridBoundary=[];
     gridInterior=[];
     GridMeshVertexArray=[];
@@ -658,7 +673,182 @@ else{
 }
 
 }
+function MappingVerteToStroke2(){
+     //Compute the curvature of the vertex like the Discrete Gradient of Arc Length. For example in
+    // http://www.cs.utexas.edu/users/evouga/uploads/4/5/6/8/45689883/notes1.pdf
+    //lvertex,vertex and rvertex are three vertex consecutives
+    function CurvatureVertex(lvertex,vertex,rvertex){
+        var vl=Victor.fromArray([lvertex.x,lvertex.y]);
+        var vc=Victor.fromArray([vertex.x,vertex.y]);
+        var vr=Victor.fromArray([rvertex.x,rvertex.y]);
+        var v1=vc.subtract(vl);
+        var v2=vr.subtract(vc);
+        var mod1=v1.length();
+        var mod2=v2.length();
+        var angle= Math.acos(v1.dot(v2)/(mod1*mod2));
+        //console.log(Math.sin(angle));
+        return (4*Math.sin(angle/2)/(mod1+mod2));
+    }
+    //return the index of the nearest grid point to vertex
+    // return undefined if no nearest grid point is found
+    //based by find the grid triangle that contem the vertex
 
+    function findNearGridVertex(vertex,arrayBoundaryIndex){
+        var i=Math.floor(2*(vertex.x-starx)/(sqrt3*sizeGrid)); 
+        if(i%2==0){
+            var j=Math.floor((vertex.y-stary)/sizeGrid);
+        }
+        else{
+            var j=Math.floor((vertex.y-stary+sizeGrid/2)/sizeGrid);
+
+        }
+        var m1=1.0/sqrt3;
+        var m2=-m1;
+        var n1=gridPointsArray[iv(i,j)].y-m1*gridPointsArray[iv(i,j)].x;
+        var n2=gridPointsArray[iv(i,j+1)].y-m2*gridPointsArray[iv(i,j+1)].x;
+        var eval1=m1*vertex.x+n1;
+        var eval2=m2*vertex.x+n2;
+        var neiborhoodIndex=[];
+        var pointGeometry = new THREE.Geometry();
+        var pointGeometryb = new THREE.Geometry();
+        var pointmaterial = new THREE.PointsMaterial( {color: 0x27B327, size: 5.0, sizeAttenuation: false, alphaTest: 0.5 } );
+        var pointmaterialblack = new THREE.PointsMaterial( {color: 0x000000, size: 5.0, sizeAttenuation: false, alphaTest: 0.5 } );
+
+        if (eval2<vertex.y){
+                if(i%2==0){
+                  neiborhoodIndex=[iv(i,j+1),iv(i+1,j+2),iv(i+1,j+1)];
+                }
+                else{
+                  neiborhoodIndex=[iv(i,j+1),iv(i+1,j+1),iv(i+1,j)];  
+                }
+        }    
+        else if(eval1<vertex.y){
+                if(i%2==0){
+                  neiborhoodIndex=[iv(i,j),iv(i,j+1),iv(i+1,j+1)];
+                }
+                else{
+                  neiborhoodIndex=[iv(i,j),iv(i,j+1),iv(i+1,j)];     
+                }
+        }
+        else{
+                if(i%2==0){
+                  neiborhoodIndex=[iv(i,j),iv(i+1,j+1),iv(i+1,j)];
+                }
+                else{
+                  neiborhoodIndex=[iv(i,j),iv(i+1,j),iv(i+1,j-1)];    
+                }   
+        }
+        
+        var point=Victor.fromArray([vertex.x,vertex.y]);
+        var v0=Victor.fromArray([gridPointsArray[neiborhoodIndex[0]].x,gridPointsArray[neiborhoodIndex[0]].y]);
+        var v1=Victor.fromArray([gridPointsArray[neiborhoodIndex[1]].x,gridPointsArray[neiborhoodIndex[1]].y]);
+        var v2=Victor.fromArray([gridPointsArray[neiborhoodIndex[2]].x,gridPointsArray[neiborhoodIndex[2]].y]);
+        var neiborhood=[v0,v1,v2];
+
+       // console.log(neiborhoodIndex);
+        var min=point.distance(v0);
+        var imin=neiborhoodIndex[0];
+        var t=0;
+        for(var k=1;k<3;k++){
+            var indexB=arrayBoundaryIndex.indexOf(neiborhoodIndex[k]);
+            if(indexB!=-1){
+                var d=point.distance(neiborhood[k]);
+                if(d<min || t==0 ){
+                    min=d;    
+                    //imin=neiborhoodIndex[k];
+                    imin=indexB;
+                }
+                t++;
+            }
+        }
+        var index0=arrayBoundaryIndex.indexOf(neiborhoodIndex[0]);
+        if(t!=0){return imin;}
+        else if(index0!=-1){
+            return index0;// second is the index in the boundary correspond to first 
+        }
+        else{
+            if(mode!="fiber"){
+                pointGeometry.vertices.push(gridPointsArray[neiborhoodIndex[0]],gridPointsArray[neiborhoodIndex[1]],gridPointsArray[neiborhoodIndex[2]],gridPointsArray[neiborhoodIndex[2]]);
+                pointGeometryb.vertices.push(new THREE.Vector3(vertex.x,vertex.y,vertex.z));
+                var particles=new THREE.Points(pointGeometry,pointmaterial);
+                var particlesb=new THREE.Points(pointGeometryb,pointmaterialblack);    
+                setup.scene.add(particles);
+                setup.scene.add(particlesb);
+            }
+            console.log("muito espaco");
+        }
+
+    }
+   
+    var n=pointSample.length;
+    
+    console.log("sample ", n);
+    //console.log("sample0 ", pointSample[0]);
+    //console.log("samplen-1 ", pointSample[n-1]);
+    
+    var curvatures=[[0,CurvatureVertex(pointSample[n-1],pointSample[0],pointSample[1])],[n-1,CurvatureVertex(pointSample[n-2],pointSample[n-1],pointSample[0])]];
+    for(var i=1;i<n-1;i++){
+        curvatures.push([i,CurvatureVertex(pointSample[i-1],pointSample[i],pointSample[i+1])]);
+    }
+    curvatures.sort(function(a, b){return b[1]-a[1]});
+    console.log(curvatures.length,n);
+    var m=gridBoundary.length;
+    console.log("gridpoint ", m);
+    var PointsToDelete=[];
+    for(var j=0;j<m;j++){
+       gridBoundary[j].associated=[];   
+    }
+    for(var j=0;j<n;j++){
+        var fi=findNearGridVertex(pointSample[curvatures[j][0]],indexFromBoundary(gridBoundary));
+        if(fi!=undefined){
+            gridBoundary[fi].associated.push(curvatures[j][0]);
+        }
+        else{
+            PointsToDelete.push(curvatures[j][0]);
+            continue;
+        }
+    }
+    if (PointsToDelete.length==0){
+        for(var i=0;i<m;i++){
+            if(gridBoundary[i].associated.length==0){
+                var a=gridBoundary[(i-1+m)%m].associated;
+                var b=gridBoundary[(i+1)%m].associated;
+                var v0=Victor.fromArray([gridPointsArray[gridBoundary[i].index].x,gridPointsArray[gridBoundary[i].index].y]);
+                var da=1000000;
+                var db=1000000;
+                var imin=-1;
+                for(var j=0;j<a.length;j++){
+                     var v1=Victor.fromArray([pointSample[a[j]].x,pointSample[a[j]].y]);
+                     var dist=v1.distance(v0);
+                     if(dist<da){
+                         da=dist;
+                         imin=a[j];
+                     }
+                }
+                //gridBoundary[i].associated.push(imin);
+                db=da;
+                for(var j=0;j<b.length;j++){
+                     var v1=Victor.fromArray([pointSample[b[j]].x,pointSample[b[j]].y]);
+                     var dist=v1.distance(v0);
+                     if(dist<db){
+                         db=dist;
+                         imin=b[j];
+                     }
+                }
+                gridBoundary[i].associated.push(imin);
+                //console.log(gridBoundary[i].associated);
+            }
+            else if(gridBoundary[i].associated.indexOf(0)==-1){
+                gridBoundary[i].associated.sort();
+            }
+            
+        }
+    }
+    for(var j=0;j<m;j++){
+           console.log(gridBoundary[j].associated);
+    }
+    return PointsToDelete;
+}
 function MappingVerteToStroke(){
 
     //Compute the curvature of the vertex like the Discrete Gradient of Arc Length. For example in
@@ -754,14 +944,14 @@ function MappingVerteToStroke(){
             return index0;// second is the index in the boundary correspond to first 
         }
         else{
-            pointGeometry.vertices.push(gridPointsArray[neiborhoodIndex[0]],gridPointsArray[neiborhoodIndex[1]],gridPointsArray[neiborhoodIndex[2]],gridPointsArray[neiborhoodIndex[2]]);
-            pointGeometryb.vertices.push(new THREE.Vector3(vertex.x,vertex.y,vertex.z));
-            var particles=new THREE.Points(pointGeometry,pointmaterial);
-            var particlesb=new THREE.Points(pointGeometryb,pointmaterialblack);
-            particles.name="DebugPoints";
-            particlesb.name="DebugPointsb";
-            setup.scene.add(particles);
-            setup.scene.add(particlesb);
+            if(mode!="fiber"){
+                pointGeometry.vertices.push(gridPointsArray[neiborhoodIndex[0]],gridPointsArray[neiborhoodIndex[1]],gridPointsArray[neiborhoodIndex[2]],gridPointsArray[neiborhoodIndex[2]]);
+                pointGeometryb.vertices.push(new THREE.Vector3(vertex.x,vertex.y,vertex.z));
+                var particles=new THREE.Points(pointGeometry,pointmaterial);
+                var particlesb=new THREE.Points(pointGeometryb,pointmaterialblack);    
+                setup.scene.add(particles);
+                setup.scene.add(particlesb);
+            }
             console.log("muito espaco");
         }
 
@@ -844,6 +1034,8 @@ function endAssociated(){
             var b=(d1>d2)?d:c;
             if(Orientation(gridPointsArray[gridBoundary[i].index],pointSample[b],gridPointsArray[gridBoundary[(i+1)%n].index])==-1){
                 gridBoundary[i].associated.push(b);
+                GridMeshVertexArray.push(new VertexGridmesh(pointSample[b].x,pointSample[b].y,0.0,"boundaryPS",b));
+                TableHashIndextoPosition["p"+b.toString()]=GridMeshVertexArray.length-1;
             }
             else{
                 var e=gridBoundary[(i+1)%n].associated;
@@ -856,13 +1048,138 @@ function endAssociated(){
                     var dh1=v1.distance(v0);
                     var dh2=v2.distance(v0);
                     var bo=(dh1>dh2)?g:f;
-                    gridBoundary[(i+1)%n].associated.push(bo);
+                    gridBoundary[(i+1)%n].associated.unshift(bo);
+                    GridMeshVertexArray.push(new VertexGridmesh(pointSample[bo].x,pointSample[bo].y,0.0,"boundaryPS",bo));
+                    TableHashIndextoPosition["p"+bo.toString()]=GridMeshVertexArray.length-1;
                     //console.log("algo");
                 }
             }
+            if(gridBoundary[i].next== gridBoundary[(i+1)%n].index){
+                   GridMeshFacesArray.push([TableHashIndextoPosition[gridBoundary[(i+1)%n].index.toString()],TableHashIndextoPosition[gridBoundary[i].index.toString()],GridMeshVertexArray.length-1]);    
+            }
+            else{
+               GridMeshFacesArray.push([TableHashIndextoPosition[gridBoundary[i].index.toString()],TableHashIndextoPosition[gridBoundary[(i+1)%n].index.toString()],GridMeshVertexArray.length-1]);    
+            }
         }
+     }    
+}
+function endAssociated2(){
+    var n=gridBoundary.length;
+     for(var i=0;i<n;i++){
+        var c=gridBoundary[i].associated[gridBoundary[i].associated.length-1]; 
+        var d=gridBoundary[(i+1)%n].associated[0];  
+        if(c!=d) {
+            var v0=Victor.fromArray([gridPointsArray[gridBoundary[i].index].x,gridPointsArray[gridBoundary[i].index].y]);
+            var v00=Victor.fromArray([gridPointsArray[gridBoundary[(i+1)%n].index].x,gridPointsArray[gridBoundary[(i+1)%n].index].y]);
+            var v1=Victor.fromArray([pointSample[c].x,pointSample[c].y]);
+            var v2=Victor.fromArray([pointSample[d].x,pointSample[d].y]);
+            var d1=v1.distance(v00);
+            var d2=v2.distance(v0);
+            var b=(d1>d2)?d:c;
+            if(d1>d2){
+              gridBoundary[i].associated.push(d);   
+              console.log(gridBoundary[i].associated);    
+            }
+            else{
+              gridBoundary[(i+1)%n].associated.unshift(c);
+              //console.log(gridBoundary[(i+1)%n].associated);        
+            }
+        }
+         
+    }
+}
+function endAssociated3(){
+    var n=gridBoundary.length;
+    var r=pointSample.length;
+     function searchAssociated(index,pj){
+        var result=[];
+        var t=0;
+        for(var i=index;i<index+n;i++){
+            if(gridBoundary[i%n].associated.indexOf(pj)!=-1){
+                result.push(i%n);
+                t++;
+            }
+            else if(t>0){
+                break;
+            }
+        }
+        return result;
      }
-
+    var associatedSample=[];
+    var i0=0;
+    for(var i=0;i<n;i++){
+        if(gridBoundary[i].associated.indexOf(0)==-1){
+            i0=i;
+            break;
+        }
+    }
+    for(var j=0;j<r;j++){
+        var aux=searchAssociated(i0,j);
+        associatedSample.push(aux);
+        i0=aux[aux.length-1];
+        GridMeshVertexArray.push(new VertexGridmesh(pointSample[j].x,pointSample[j].y,0.0,"boundaryPS",j));
+        TableHashIndextoPosition["p"+j.toString()]=GridMeshVertexArray.length-1;
+    }         
+    for(var j=0;j<r;j++){
+        if(associatedSample[j].length>1){
+            for(k=0;k<associatedSample[j].length-1;k++){
+                GridMeshFacesArray.push([TableHashIndextoPosition["p"+j.toString()],TableHashIndextoPosition[gridBoundary[associatedSample[j][k+1]].index.toString()],TableHashIndextoPosition[gridBoundary[associatedSample[j][k]].index.toString()]]);    
+            }
+        }
+        else{
+            var assoGrid=gridBoundary[associatedSample[j][0]].associated;
+            if(assoGrid.length==1){
+                var v0=Victor.fromArray([gridPointsArray[gridBoundary[associatedSample[j][0]].index].x,gridPointsArray[gridBoundary[associatedSample[j][0]].index].y]);
+                var v00=Victor.fromArray([gridPointsArray[gridBoundary[associatedSample[(j+1)%r][0]].index].x,gridPointsArray[gridBoundary[associatedSample[(j+1)%r][0]].index].y]);
+                var v1=Victor.fromArray([pointSample[j].x,pointSample[j].y]);
+                var v2=Victor.fromArray([pointSample[(j+1)%r].x,pointSample[(j+1)%r].y]);
+                var d1=v1.distance(v00);
+                var d2=v2.distance(v0);
+                var next=(j+1)%r;
+                if(d1>d2){
+                   if(gridBoundary[associatedSample[j][0]].next=gridBoundary[associatedSample[next][0]].index){    
+                        GridMeshFacesArray.push([TableHashIndextoPosition[gridBoundary[associatedSample[next][0]].index.toString()],TableHashIndextoPosition[gridBoundary[associatedSample[j][0]].index.toString()],TableHashIndextoPosition["p"+next.toString()]]);
+                        GridMeshFacesArray.push([TableHashIndextoPosition["p"+j.toString()],TableHashIndextoPosition["p"+next.toString()],TableHashIndextoPosition[gridBoundary[associatedSample[j][0]].index.toString()]]);
+                       
+                   }
+                   else{
+                       GridMeshFacesArray.push([TableHashIndextoPosition[gridBoundary[associatedSample[j][0]].index.toString()],TableHashIndextoPosition[gridBoundary[associatedSample[next][0]].index.toString()],TableHashIndextoPosition["p"+next.toString()]]);   
+                       GridMeshFacesArray.push([TableHashIndextoPosition["p"+next.toString()],TableHashIndextoPosition["p"+j.toString()],TableHashIndextoPosition[gridBoundary[associatedSample[j][0]].index.toString()]]);
+                   }    
+                }
+                else{
+                    if(gridBoundary[associatedSample[j][0]].next=gridBoundary[associatedSample[next][0]].index){        
+                        GridMeshFacesArray.push([TableHashIndextoPosition[gridBoundary[associatedSample[next][0]].index.toString()],TableHashIndextoPosition[gridBoundary[associatedSample[j][0]].index.toString()],TableHashIndextoPosition["p"+j.toString()]]);        
+                        GridMeshFacesArray.push([TableHashIndextoPosition["p"+j.toString()],TableHashIndextoPosition["p"+next.toString()],TableHashIndextoPosition[gridBoundary[associatedSample[next][0]].index.toString()]]);
+                    }
+                    else{
+                        GridMeshFacesArray.push([TableHashIndextoPosition[gridBoundary[associatedSample[J][0]].index.toString()],TableHashIndextoPosition[gridBoundary[associatedSample[next][0]].index.toString()],TableHashIndextoPosition["p"+j.toString()]]);  
+                        
+                        GridMeshFacesArray.push([TableHashIndextoPosition["p"+next.toString()],TableHashIndextoPosition["p"+f.toString()],TableHashIndextoPosition[gridBoundary[associatedSample[next][0]].index.toString()]]);
+                    }
+                }
+   
+            }
+            else if(j==assoGrid[0]){
+                console.log("j ", j);
+                for(k=0;k<assoGrid.length-1;k++){
+                    if(gridBoundary[associatedSample[j][0]].index=gridBoundary[associatedSample[(j+1)%r][0]].next){        
+                        GridMeshFacesArray.push([TableHashIndextoPosition[gridBoundary[associatedSample[j][0]].index.toString()],TableHashIndextoPosition["p"+assoGrid[k].toString()],TableHashIndextoPosition["p"+assoGrid[k+1].toString()]]);  
+                        
+                    }
+                    else{
+                        GridMeshFacesArray.push([TableHashIndextoPosition["p"+assoGrid[k].toString()],TableHashIndextoPosition[gridBoundary[associatedSample[j][0]].index.toString()],TableHashIndextoPosition["p"+assoGrid[k+1].toString()]]);    
+                    }
+                    console.log(assoGrid);
+                    console.log("k ", k);
+                }
+            }
+            else{
+                
+            }
+            
+        }
+    }
     
 }
 function drawAssociated(){
@@ -872,7 +1189,9 @@ function drawAssociated(){
      var Bgeometry= new THREE.Object3D();
      Bgeometry.name="borderLine";
      var n=gridBoundary.length;
-     endAssociated();
+     //endAssociated();
+     endAssociated2();
+     //endAssociated3();
      for(var i=0;i<n;i++){
         var edge=new THREE.Geometry();
         var edged=new THREE.Geometry(); 
@@ -880,7 +1199,7 @@ function drawAssociated(){
             edge.vertices.push(gridPointsArray[gridBoundary[i].index],pointSample[gridBoundary[i].associated[j]]);    
         }
         var line = new THREE.Line(edge,materialBoundary);
-        Bgeometry.add(line);    
+        Bgeometry.add(line);  
      }
 
      setup.scene.add(Bgeometry);   

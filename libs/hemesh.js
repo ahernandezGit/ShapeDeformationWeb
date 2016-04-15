@@ -139,8 +139,8 @@ Hemesh.prototype.addFace = function(vertices) {
 		
 		var h = this.findHalfedge(v1, v2);
 		var hExists = this.halfedgeValid(h);
-		if(hExists) {
-			if(!this.halfedgeIsOnBoundary(h)) {
+		if(hExists){
+			if(!this.halfedgeIsOnBoundary(h)){
 				console.warn("attempting to add face not on boundary: "+vertices.join(" "));
                 var edge=new THREE.Geometry();
                 var materialBoundary = new THREE.LineBasicMaterial( { color: 0xB404AE, linewidth: 2 } );
@@ -150,7 +150,7 @@ Hemesh.prototype.addFace = function(vertices) {
                 edge.vertices.push(this.positions[vertices[vertices.length-1]]);
                 var lines = new THREE.Line(edge,materialBoundary);
                 setup.scene.add(lines);
-                //console.log("haledge ",h);
+                console.log("haledge ",h);
                 //console.log("v1 ",v1);
                 //console.log("v2 ",v2);  
                 return HEMESH_INVALID_IDX;
@@ -339,6 +339,70 @@ Hemesh.prototype.setVertexHalfedge = function(v, h) {
 /***************
 	Halfedge properties
 */
+
+Hemesh.prototype.vertexValence= function(v) {
+    var s=0;	
+    var h=this.vertexHalfedge(v);
+    var hs=h;
+    var geometryedge = new THREE.Geometry();
+    var geometryobject = new THREE.Object3D();
+    var material = new THREE.LineBasicMaterial( { color: 0x27B327, linewidth: 2 } );
+    if(this.halfedgeValid(this.halfedgeOpposite[h])){
+       //console.log([this.positions[v],this.positions[this.halfedgeVertex(this.halfedgeOpposite(h))]]);    
+       geometryedge.vertices=[this.positions[v],this.positions[this.halfedgeVertex(this.halfedgeOpposite(h))]];
+       var line = new THREE.Line(geometryedge,material);
+       geometryobject.add(line);    
+    }
+	do {
+		h = this.halfedgeSinkCCW(h);
+        if(h>0){
+            if(this.halfedgeValid(this.halfedgeOpposite[h])){
+               s++;
+               var geometryedge = new THREE.Geometry();
+               //console.log([this.positions[v],this.positions[this.halfedgeVertex(this.halfedgeOpposite(h))]]);
+               geometryedge.vertices=[this.positions[v],this.positions[this.halfedgeVertex(this.halfedgeOpposite(h))]];
+               var line = new THREE.Line(geometryedge,material);
+               geometryobject.add(line);
+            }
+        }
+        else{break;}
+        
+	} while(h !== hs);
+    if(h<0){
+        s=0;
+        h=this.vertexHalfedge(v);
+        hs=h;
+        var geometryedge = new THREE.Geometry();
+        var geometryobject1 = new THREE.Object3D();
+        if(this.halfedgeValid(this.halfedgeOpposite[h])){
+            //console.log([this.positions[v],this.positions[this.halfedgeVertex(this.halfedgeOpposite(h))]]); 
+            geometryedge.vertices=[this.positions[v],this.positions[this.halfedgeVertex(this.halfedgeOpposite(h))]];
+            var line = new THREE.Line(geometryedge,material);
+            geometryobject1.add(line);
+        }
+        do {
+            h = this.halfedgeSinkCW(h);
+            if(h>0){
+                if(this.halfedgeValid(this.halfedgeOpposite[h])){
+                    s++;
+                    var geometryedge = new THREE.Geometry();
+                    //console.log([this.positions[v],this.positions[this.halfedgeVertex(this.halfedgeOpposite(h))]]);
+                    geometryedge.vertices=[this.positions[v],this.positions[this.halfedgeVertex(this.halfedgeOpposite(h))]];
+                    var line = new THREE.Line(geometryedge,material);
+                    geometryobject1.add(line);
+                }
+            }
+            else{break;}
+	    }while(h !== hs);
+        setup.scene.add(geometryobject1);    
+    }
+    else{
+        setup.scene.add(geometryobject);    
+    }
+    
+    return s;
+}
+
 Hemesh.prototype.halfedgeCotan = function(h) {
 	var h2 = this.halfedgeNext(h);
 	var h3 = this.halfedgeNext(h2);
@@ -346,7 +410,8 @@ Hemesh.prototype.halfedgeCotan = function(h) {
 	var u = this.halfedgeDirection(h3)
 	var v = this.halfedgeDirection(this.halfedgeOpposite(h2));
 	
-	return u.dot(v)/u.clone().cross(v).length();
+	//return u.dot(v)/u.clone().cross(v).length();
+    return u.dot(v)/u.clone().cross(v).length();
 }
 
 Hemesh.prototype.halfedgeDirection = function(h) {
@@ -440,6 +505,7 @@ Hemesh.prototype.findHalfedge = function(v1, v2, dbg) {
 	
 	if(this.halfedgeValid(h2) && this.halfedgeValid(h1)) {
 		var hs = h2;
+        var t=0;
 		do {
 			if(!this.halfedgeValid(h2)) return HEMESH_INVALID_IDX;
 
@@ -448,7 +514,8 @@ Hemesh.prototype.findHalfedge = function(v1, v2, dbg) {
 			}
 			
 			h2 = this.halfedgeSinkCCW(h2);
-		} while(h2 !== hs);
+            t++;
+		} while(h2 !== hs && t<10);
 	}
 	return HEMESH_INVALID_IDX;
 }
