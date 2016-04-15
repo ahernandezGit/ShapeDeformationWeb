@@ -1,5 +1,6 @@
 // array of index(in vertexAdjacency array) from the constrain vertex 
 var FixedVertex=[];
+var FreeVertex=[];
 var L={};
 //var FreeVertex=[];
 
@@ -87,8 +88,7 @@ function uniformLaplacian(){
             else{
                 var hs=hemesh.findHalfedge(i,j);
                 if(hemesh.halfedgeValid(hs)){
-                    //console.log(hemesh.vertexValence(i));
-                    L.val[i*L.n+j]=-1/6;
+                    L.val[i*L.n+j]=-1/hemesh.vertexValence(i);
                 }
             }
         }

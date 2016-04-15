@@ -69,7 +69,38 @@ function createMesh(faces,back,front){
     //for(var i=0;i<)
     return [fac,vtx];
 }	
-	
+
+// input is the vertex and faces if the plane triangulate stroke  
+function createMesh2(){
+    var r=pointSample.length;
+    var n=gridBoundary.length;
+    var interiorPointsNumber=GridMeshVertexArray.length-r;
+    var totalPoints=GridMeshVertexArray.length;
+    var vtx=toThreeVector3(GridMeshVertexArray.slice()); 
+    var vtx2=[];
+    for(var i=0;i<interiorPointsNumber;i++){
+        vtx2.push(new THREE.Vector3(vtx[i].x,vtx[i].y,parseFloat(-sizeGrid)));
+    }
+    for(var i=0;i<interiorPointsNumber;i++){
+        //console.log(i,parseFloat(sizeGrid));
+        vtx[i].setZ(parseFloat(sizeGrid));
+    }
+
+    vtx=vtx.concat(vtx2);
+    var fac=GridMeshFacesArray.slice();
+    for(var i=0;i<GridMeshFacesArray.length;i++){
+        var current=GridMeshFacesArray[i].slice();
+        current.reverse();
+        for(var j=0;j<3;j++){
+           if(current[j]<interiorPointsNumber){
+               current[j]+=totalPoints;
+           }   
+        }
+        fac.push(current);
+    }
+    return [fac,vtx];
+}
+
 function applyFairing(step,mesh,hemesh) {
             var star0 = hemesh.hodgeStar0Form();
             var L = hemesh.laplacian();

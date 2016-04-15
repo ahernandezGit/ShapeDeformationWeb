@@ -344,25 +344,25 @@ Hemesh.prototype.vertexValence= function(v) {
     var s=0;	
     var h=this.vertexHalfedge(v);
     var hs=h;
-    var geometryedge = new THREE.Geometry();
-    var geometryobject = new THREE.Object3D();
-    var material = new THREE.LineBasicMaterial( { color: 0x27B327, linewidth: 2 } );
-    if(this.halfedgeValid(this.halfedgeOpposite[h])){
+    //var geometryedge = new THREE.Geometry();
+    //var geometryobject = new THREE.Object3D();
+    //var material = new THREE.LineBasicMaterial( { color: 0x27B327, linewidth: 2 } );
+    //if(this.halfedgeValid(this.halfedgeOpposite(h)){
        //console.log([this.positions[v],this.positions[this.halfedgeVertex(this.halfedgeOpposite(h))]]);    
-       geometryedge.vertices=[this.positions[v],this.positions[this.halfedgeVertex(this.halfedgeOpposite(h))]];
-       var line = new THREE.Line(geometryedge,material);
-       geometryobject.add(line);    
-    }
+       //geometryedge.vertices=[this.positions[v],this.positions[this.halfedgeVertex(this.halfedgeOpposite(h))]];
+       //var line = new THREE.Line(geometryedge,material);
+       //geometryobject.add(line);    
+    //}
 	do {
 		h = this.halfedgeSinkCCW(h);
         if(h>0){
-            if(this.halfedgeValid(this.halfedgeOpposite[h])){
+            if(this.halfedgeValid(this.halfedgeOpposite(h))){
                s++;
-               var geometryedge = new THREE.Geometry();
+               //var geometryedge = new THREE.Geometry();
                //console.log([this.positions[v],this.positions[this.halfedgeVertex(this.halfedgeOpposite(h))]]);
-               geometryedge.vertices=[this.positions[v],this.positions[this.halfedgeVertex(this.halfedgeOpposite(h))]];
-               var line = new THREE.Line(geometryedge,material);
-               geometryobject.add(line);
+               //geometryedge.vertices=[this.positions[v],this.positions[this.halfedgeVertex(this.halfedgeOpposite(h))]];
+               //var line = new THREE.Line(geometryedge,material);
+               //geometryobject.add(line);
             }
         }
         else{break;}
@@ -372,34 +372,35 @@ Hemesh.prototype.vertexValence= function(v) {
         s=0;
         h=this.vertexHalfedge(v);
         hs=h;
-        var geometryedge = new THREE.Geometry();
+        /*var geometryedge = new THREE.Geometry();
         var geometryobject1 = new THREE.Object3D();
         if(this.halfedgeValid(this.halfedgeOpposite[h])){
             //console.log([this.positions[v],this.positions[this.halfedgeVertex(this.halfedgeOpposite(h))]]); 
             geometryedge.vertices=[this.positions[v],this.positions[this.halfedgeVertex(this.halfedgeOpposite(h))]];
             var line = new THREE.Line(geometryedge,material);
             geometryobject1.add(line);
-        }
+        }*/
         do {
             h = this.halfedgeSinkCW(h);
             if(h>0){
-                if(this.halfedgeValid(this.halfedgeOpposite[h])){
+                if(this.halfedgeValid(this.halfedgeOpposite(h))){
                     s++;
-                    var geometryedge = new THREE.Geometry();
+                    //var geometryedge = new THREE.Geometry();
                     //console.log([this.positions[v],this.positions[this.halfedgeVertex(this.halfedgeOpposite(h))]]);
-                    geometryedge.vertices=[this.positions[v],this.positions[this.halfedgeVertex(this.halfedgeOpposite(h))]];
-                    var line = new THREE.Line(geometryedge,material);
-                    geometryobject1.add(line);
+                    //geometryedge.vertices=[this.positions[v],this.positions[this.halfedgeVertex(this.halfedgeOpposite(h))]];
+                    //var line = new THREE.Line(geometryedge,material);
+                    //geometryobject1.add(line);
                 }
             }
             else{break;}
 	    }while(h !== hs);
-        setup.scene.add(geometryobject1);    
-    }
-    else{
-        setup.scene.add(geometryobject);    
+        //setup.scene.add(geometryobject1);    
     }
     
+    /*else{
+        setup.scene.add(geometryobject);    
+    }
+    */
     return s;
 }
 
@@ -793,9 +794,8 @@ Hemesh.prototype.toGeometry = function() {
 
 Hemesh.prototype.toWireframeGeometry = function() {
 	var geometry = new THREE.Geometry();
-    hemesh=this;
 	for(var h=0; h < this.halfedgeAdjacency.length; h += 2) {
-		if(hemesh.vertexValid(this.halfedgeVertex(h))) {
+		if(this.vertexValid(this.halfedgeVertex(h))) {
 			var v1 = this.halfedgeSource(h);
 			var v2 = this.halfedgeSink(h);
 			geometry.vertices.push(this.vertexPoint(v1));

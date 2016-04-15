@@ -844,9 +844,6 @@ function MappingVerteToStroke2(){
             
         }
     }
-    for(var j=0;j<m;j++){
-           console.log(gridBoundary[j].associated);
-    }
     return PointsToDelete;
 }
 function MappingVerteToStroke(){
@@ -1065,6 +1062,23 @@ function endAssociated(){
 }
 function endAssociated2(){
     var n=gridBoundary.length;
+    var r=pointSample.length;
+         function searchAssociated(index,pj){
+            var result=[];
+            var t=0;
+            for(var i=index;i<index+n;i++){
+                if(gridBoundary[i%n].associated.indexOf(pj)!=-1){
+                    result.push(i%n);
+                    t++;
+                }
+                else if(t>0){
+                    break;
+                }
+            }
+            return result;
+         }
+   
+    
      for(var i=0;i<n;i++){
         var c=gridBoundary[i].associated[gridBoundary[i].associated.length-1]; 
         var d=gridBoundary[(i+1)%n].associated[0];  
@@ -1078,7 +1092,7 @@ function endAssociated2(){
             var b=(d1>d2)?d:c;
             if(d1>d2){
               gridBoundary[i].associated.push(d);   
-              console.log(gridBoundary[i].associated);    
+              //console.log(gridBoundary[i].associated);    
             }
             else{
               gridBoundary[(i+1)%n].associated.unshift(c);
@@ -1087,6 +1101,36 @@ function endAssociated2(){
         }
          
     }
+    var associatedSample=[];
+    var i0=0;
+    for(var i=0;i<n;i++){
+        if(gridBoundary[i].associated.indexOf(0)==-1){
+            i0=i;
+            break;
+        }
+    }
+    for(var j=0;j<r;j++){
+        var aux=searchAssociated(i0,j);
+        associatedSample.push(aux);
+        i0=aux[aux.length-1];
+        GridMeshVertexArray.push(new VertexGridmesh(pointSample[j].x,pointSample[j].y,0.0,"boundaryPS",j));
+        TableHashIndextoPosition["p"+j.toString()]=GridMeshVertexArray.length-1;
+    }         
+    for(var j=0;j<r;j++){
+        if(associatedSample[j].length>1){
+            for(k=0;k<associatedSample[j].length-1;k++){
+                GridMeshFacesArray.push([TableHashIndextoPosition["p"+j.toString()],TableHashIndextoPosition[gridBoundary[associatedSample[j][k+1]].index.toString()],TableHashIndextoPosition[gridBoundary[associatedSample[j][k]].index.toString()]]);    
+            }
+        }
+    }
+    for(var j=0;j<n;j++){
+        if(gridBoundary[j].associated.length>1){
+            for(k=0;k<gridBoundary[j].associated.length-1;k++){
+                GridMeshFacesArray.push([TableHashIndextoPosition["p"+gridBoundary[j].associated[k].toString()],TableHashIndextoPosition["p"+gridBoundary[j].associated[k+1].toString()],TableHashIndextoPosition[gridBoundary[j].index.toString()]]);    
+            }
+        }
+    }
+    
 }
 function endAssociated3(){
     var n=gridBoundary.length;

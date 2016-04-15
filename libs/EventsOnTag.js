@@ -12,7 +12,12 @@ function fixBoundaryPoints() {
               gridBoundary[i].associated=[];
           }
           ptd=MappingVerteToStroke2();
-          drawAssociated();
+          if(ptd.length==0){
+            drawAssociated();      
+          }
+          else{
+              fixBoundaryPoints();
+          }
           //cancelRender=false;
           //render();
           //setTimeout(cancelAnimation,4000);
@@ -25,15 +30,12 @@ function fixBoundaryPoints() {
 function inflationFuntion3() {
     
   
-
-    //var VertexInteriores=toThreeVector3(GridMeshVertexArray); 
-  //  var FacesVertices=createMesh(GridMeshFacesArray,offsetZ(VertexInteriores,parseFloat(sizeGrid)),offsetZ(VertexInteriores,-sizeGrid));  
+    var FacesVertices=createMesh2(); 
+    hemesh.fromFaceVertexArray(FacesVertices[0],FacesVertices[1]); 
     
-    hemesh.fromFaceVertexArray(GridMeshFacesArray,toThreeVector3(GridMeshVertexArray)); 
+    var wireframeLines = hemesh.toWireframeGeometry();
+   // wireframeLines.faces=FacesVertices[0];
     
-    
-     var wireframeLines = hemesh.toWireframeGeometry();
-     
     var geo = hemesh.toGeometry();
     
     var mesh = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({
@@ -44,11 +46,11 @@ function inflationFuntion3() {
         polygonOffsetUnits: 0.1
     }));
  
-     var wireframe = new THREE.Line(wireframeLines, new THREE.LineBasicMaterial({
+     var wireframe = new THREE.LineSegments(wireframeLines, new THREE.LineBasicMaterial({
         color: 0xff2222,
         opacity: 0.2,
         transparent: true,
-    }), THREE.LineSegments);
+    }));
     setup.scene.remove(gridgeometry);
     var Linesam=setup.scene.getObjectByName("LineBoundary");
     var borderl=setup.scene.getObjectByName("borderLine"); 
@@ -67,7 +69,7 @@ function inflationFuntion3() {
        setup.scene.remove(debuglines2);
     }
     gridgeometry={};
-    
+    L=uniformLaplacian();
     //L=uniformLaplacian();
     //var prova=FisrtIterationCurvaturesProcess();
     //var prov2=IterationCurvaturesProcess(prova);
@@ -82,25 +84,6 @@ function inflationFuntion3() {
      setup.scene.add(mesh,wireframe);
 }
 function inflationFuntion2() {
-    
-    function searchAssociated(index,pj){
-        var result=[];
-        var t=0;
-        for(var i=index;i<index+n;i++){
-            if(gridBoundary[i%n].associated.indexOf(pj)!=-1){
-                result.push(i%n);
-                t++;
-            }
-            else if(t>0){
-                break;
-            }
-        }
-        return result;
-    }
-    var o1=Orientation(gridPointsArray[gridBoundary[0].index],gridPointsArray[gridBoundary[1].index],gridPointsArray[gridBoundary[2].index]);
-    var o2=Orientation(pointSample[0],pointSample[1],pointSample[2]);
-    console.log(o1,o2);
-                
     var r=pointSample.length;
     var n=gridBoundary.length;
     var interiorPointsNumber=GridMeshVertexArray.length;
@@ -467,7 +450,7 @@ d3.select('#finishButton').on('click',OtherMouseControls);
      setTimeout(cancelAnimation,1000); 
  });
  d3.select('#inflationButton').on('click',function(){
-     inflationFuntion();
+     inflationFuntion3();
      OtherMouseControls();
      //cancelRender=false;
      //render();
