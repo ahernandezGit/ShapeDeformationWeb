@@ -26,13 +26,21 @@ function fixBoundaryPoints() {
          console.log("ptd zero");
       }
  }
-
-function inflationFuntion3() {
+function inflationFunction3(){
+    L=uniformLaplacian();
+    var ci=FisrtIterationCurvaturesProcess();
+    var el=FisrtIterationEdgeLength();
+    var etaij=computeEdgeVector();
+    var laplacian=computeIntegratedLaplacian(ci);
+    IterationUpdateVector(laplacian,etaij);
+    
+}
+function createInicialMesh() {
     
   
     var FacesVertices=createMesh2(); 
     hemesh.fromFaceVertexArray(FacesVertices[0],FacesVertices[1]); 
-    
+    hemesh.normalize();
     var wireframeLines = hemesh.toWireframeGeometry();
    // wireframeLines.faces=FacesVertices[0];
     
@@ -56,6 +64,9 @@ function inflationFuntion3() {
     var borderl=setup.scene.getObjectByName("borderLine"); 
     var debuglines=setup.scene.getObjectByName("DebugPoints");
     var debuglines2=setup.scene.getObjectByName("DebugPointsb");
+    
+    wireframe.name="wireframe";
+    mesh.name="mesh";
     if(Linesam!=undefined ){
         Linesam.children=[];
     }
@@ -68,20 +79,10 @@ function inflationFuntion3() {
     if(debuglines2!=undefined ){
        setup.scene.remove(debuglines2);
     }
-    gridgeometry={};
-    L=uniformLaplacian();
-    //L=uniformLaplacian();
-    //var prova=FisrtIterationCurvaturesProcess();
-    //var prov2=IterationCurvaturesProcess(prova);
-    //var meancurvatures=FirstCurvaturesCurve();
-    //console.log(meancurvatures.length);
-    //console.log(r);
-    //var lapla=uniformLaplacian();
-    //console.log(lapla);
-    //console.log(hemesh.positions.length-r);
-    
+    gridgeometry={};    
      
-     setup.scene.add(mesh,wireframe);
+    setup.scene.add(mesh,wireframe);
+     
 }
 function inflationFuntion2() {
     var r=pointSample.length;
@@ -450,7 +451,10 @@ d3.select('#finishButton').on('click',OtherMouseControls);
      setTimeout(cancelAnimation,1000); 
  });
  d3.select('#inflationButton').on('click',function(){
-     inflationFuntion3();
+     inflationFunction3();
+ });
+ d3.select('#meshButton').on('click',function(){
+     createInicialMesh();
      OtherMouseControls();
      //cancelRender=false;
      //render();

@@ -66,6 +66,7 @@ function updatePointSample(newPointSample){
     curve.closed=true;
     var numberPoints=Math.round(curve.getLength()/(sizeGrid));
     pointSample=curve.getSpacedPoints(numberPoints);
+    lengthPointSample=curve.getLength();
     pointSample.pop();
     //pointSample.pop();
      for(var i=0;i<pointSample.length;i++){
@@ -91,6 +92,7 @@ function updateSizeGrid(newVal){
          setup.scene.remove(obj);
     }
     pointSample = [ ];
+    lengthPointSample=0;
     gridI=[];
     gridPointsArray=[]; 
     LineSample = new THREE.Object3D();

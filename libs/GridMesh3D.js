@@ -1,39 +1,4 @@
-// Yields a different mesh material depending on the number of 
-			// the connected component of the triangle
-			// 
-function meshMaterial (component) {
-    var colors = [0xffffff, 0xffaaff, 0xffffaa, 0xaaffff, 
-                  0xaaaaff, 0xffaaaa, 0xaaffaa]; 
-    return new THREE.MeshLambertMaterial({ 
-        color: colors[5], 
-        side: THREE.DoubleSide,
-        polygonOffset: true,
-        polygonOffsetFactor: 1,
-        polygonOffsetUnits: 1
-    } );
-} 
-
-//
-// Yields a proper material for drawing edges based on its type
-//
-function edgeMaterial (edge) {
-    var edgeTypeColor = { 
-        "Cut" : 0xff00000, 
-        "Ridge" : 0x0ffff00, 
-        "Valley" : 0x00ffff,
-        "Flat" : 0x0000ff,
-        "Border" : 0x777777
-    };
-    var material = new THREE.LineDashedMaterial({
-        color: edgeTypeColor["Flat"], 
-        scale:0.5, 
-        linewidth:3, 
-        dashSize: 2, 
-        gapSize: 0
-    });
-    return material;
-}
-
+mesh={};
 
 function VertexGridmesh(x,y,z,type,index){
     this.vertex=new THREE.Vector3(x, y, z);
@@ -98,41 +63,10 @@ function createMesh2(){
         }
         fac.push(current);
     }
+    for(i=totalPoints-1;i>=interiorPointsNumber;i=i-1){
+        FixedVertex.push(i);
+    }
+    FixedVertex.reverse();
     return [fac,vtx];
 }
 
-function applyFairing(step,mesh,hemesh) {
-            var star0 = hemesh.hodgeStar0Form();
-            var L = hemesh.laplacian();
-            var A = numeric.ccsadd(star0, numeric.ccsmul(L, step));
-            var rhs = hemesh.dualVertexMatrix();
-
-            var px = [];
-            var py = [];
-            var pz = [];
-            for(var i=0; i < rhs.length; ++i) {
-                px.push([rhs[i][0]]);
-                py.push([rhs[i][1]]);
-                pz.push([rhs[i][2]]);
-            }
-
-            var LU = numeric.LU(numeric.ccsFull(A));
-            var x = numeric.solve(numeric.ccsFull(A), px);
-            var y = numeric.solve(numeric.ccsFull(A), py);
-            var z = numeric.solve(numeric.ccsFull(A), pz);
-
-            for(var i=0; i < x.length; ++i) {
-                hemesh.moveVertexTo(i, new THREE.Vector3(x[i], y[i], z[i]));
-            }
-
-            mesh.geometry.verticesNeedUpdate = true;
-
-            setup.scene.remove(wireframe);
-            wireframeLines = hemesh.toWireframeGeometry();
-            wireframe = new THREE.Line(wireframeLines, new THREE.LineBasicMaterial({
-                color: 0xff2222,
-                opacity: 0.2,
-                transparent: true,
-            }), THREE.LinePieces);
-            setup.scene.add(wireframe);
-}

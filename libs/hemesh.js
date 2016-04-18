@@ -242,6 +242,7 @@ Hemesh.prototype.faceArea = function(f) {
 	return n.length()*0.5;
 }
 
+
 Hemesh.prototype.faceSize = function(f) {
 	var h = this.faceHalfedge(f);
 	var hs = h;
@@ -520,7 +521,17 @@ Hemesh.prototype.findHalfedge = function(v1, v2, dbg) {
 	}
 	return HEMESH_INVALID_IDX;
 }
-
+Hemesh.prototype.vertexCirculator = function (f, he) {
+	var start = he;
+	var vtx = this.halfedgeVertex(he);
+	var max = 20; // A failsafe for corrupt hds
+	while (true) {
+		if (f(he) != undefined) break;
+		he = this.halfedgeSinkCCW(he);
+		if (he === start) break;
+		if (max--== 0) throw "Corrupt hds in vertex circulation";
+	}
+}
 /***************
 	Differential forms operations
 */

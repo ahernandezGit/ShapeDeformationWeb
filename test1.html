@@ -53,9 +53,9 @@
             <label><input type="checkbox" id="checkGrid">Grid</label><br/>        
             <button id="opButton">Optimize Boundary </button>
             <button id="fixButton"> Fix Boundary </button>       
-            <button id="reflexButton">Step by Step </button>
+            <button id="inflationButton">Inflation </button>
             <button id="assoButton">Associated</button>
-            <button id="inflationButton">Inflation</button>     
+            <button id="meshButton">Mesh Inicial</button>     
             <button id="drawButton">Draw</button>    
             <button id="clearButton">Clear </button>
             <button id="finishButton">Finish</button>    
@@ -68,6 +68,7 @@
         var requestIdAnimation;
         var mouse = new THREE.Vector2();
         var sqrt3=1.732050808;
+        var lengthPointSample=0;
         var setup = new ThreeSetup();
         var cancelRender=false;
         var isDrawing=false;
@@ -180,6 +181,7 @@
              }
               points=[];
               pointSample = [ ];
+              lengthPointSample=0;
               gridI=[];
               gridPointsArray=[];
               ptd=[];
