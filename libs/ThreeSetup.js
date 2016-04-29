@@ -1,6 +1,6 @@
 var ThreeSetup = function() {
 	this.scene = new THREE.Scene();
-	this.camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+	this.camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 1, 1000);
     //this.camera = new THREE.OrthographicCamera(window.innerWidth / -2, window.innerWidth / 2,  window.innerHeight / 2, window.innerHeight / -2, 0.1, 100);
 	this.controls = new THREE.TrackballControls(this.camera);
 	this.renderer = new THREE.WebGLRenderer({ antialias:true });
@@ -29,7 +29,7 @@ ThreeSetup.prototype.initRenderer = function() {
 }
 
 ThreeSetup.prototype.initCamera = function() {
-	this.camera.position.z = 2;
+	this.camera.position.z = 20;
 }
 
 ThreeSetup.prototype.resize = function() {
