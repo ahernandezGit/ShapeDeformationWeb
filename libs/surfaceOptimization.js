@@ -1,5 +1,9 @@
 // array of index(in vertexAdjacency array) from the constrain vertex 
 var FixedVertex=[];
+
+// for compute only half of the initial mesh and after mirror vertexs
+//FirstMesh=true;
+/*
 var L={};
 var Ac={};
 var AcT={};
@@ -7,7 +11,7 @@ var invAcTAc={};
 var First_Ac={};
 var First_AcT={};
 var First_invAcTAc={};
-
+*/
 //var FreeVertex=[];
 
 //Mean Curvature of one vertex (index v) by cotangent formula
@@ -41,7 +45,7 @@ function meanCurvaturesCurveCotangent(v){
        //var material = new THREE.LineBasicMaterial( {color: 0x27B327, linewidth: 2 } );
        //var edge=new THREE.Line(edgeGeometry,material);
        //setup.scene.add(edge);
-   return 0.25*vetor.length();    
+   return 0.125*vetor.length();    
 }
 
 function CurvatureVertexPlane(lvertex,vertex,rvertex){
@@ -75,8 +79,13 @@ function FirstCurvaturesCurve2(){
 
 //Laplacian for all vertex vertex
 function uniformLaplacian(){
+    /*if(!FirstMesh){
+        var n=hemesh.positions.length;
+    }
+    else{
+        var n=GridMeshVertexArray.length;    
+    }*/
     var n=hemesh.positions.length;
-    
     var L=zeros(n,n);
     var result=[];
     for(var i=0;i<n;i++){
@@ -93,7 +102,7 @@ function uniformLaplacian(){
     return sparse(L);
 }
 function matrixtoProcessCurvatureEdgeLength(){
-    var n=hemesh.positions.length;
+    var n=L.n;
     var fL=full(L);
     var A=zeros(2*n,n);
     for(var i=n;i<2*n;i++){
@@ -117,7 +126,7 @@ function matrixtoProcessCurvatureEdgeLength(){
     invAcTAc=inv(AtA);
 }
 function FirstMatrixtoProcessCurvatureEdgeLength(){
-    var n=hemesh.positions.length;
+    var n=L.n;
     var fL=full(L);
     var m=n+FixedVertex.length;
     var A=zeros(m,n);
@@ -137,7 +146,7 @@ function FirstMatrixtoProcessCurvatureEdgeLength(){
 }
 
 function FisrtIterationCurvaturesProcess(){
-    var n=hemesh.positions.length;
+    var n=L.n;
     var m=n+FixedVertex.length;
     var b=zeros(m);
     var bconstrain=FirstCurvaturesCurve2();
@@ -184,11 +193,11 @@ function IterationCurvaturesProcess(cc){
     }
     //var c=cgnr(A,b);
     var c=mulMatrixVector(invAcTAc,mulspMatrixVector(AcT,b));
-    console.log(c.length);
+    //console.log(c.length);
     return c;
 }
 function computeAverageEdgeLength(){
-    var n=hemesh.positions.length;
+    var n=L.n;
     var result=[];
     for(var i=0;i<n;i++){
         var h=hemesh.vertexHalfedge(i);
@@ -248,7 +257,7 @@ function IterationEdgeLength(el){
     }
     //var el=cgnr(A,b);
     var el=mulMatrixVector(invAcTAc,mulspMatrixVector(AcT,b));
-    console.log(el.length);
+    //console.log(el.length);
     return el;
 }
 function computeEdgeVector(edgeLength){
@@ -364,7 +373,6 @@ function IterationUpdateVector(lapla,etaarray){
     var AT=transposespMatrix(spA);  
     var AtA=mulspMatrixspMatrix(AT,spA);
     var invATA=inv(AtA);
-1
     var labx = new Lalolab("laloxname",false,"libs/lalolib") ; 
     var laby = new Lalolab("laloyname",false,"libs/lalolib") ; 
     var labz = new Lalolab("lalozname",false,"libs/lalolib") ; 
@@ -383,34 +391,43 @@ function IterationUpdateVector(lapla,etaarray){
     flaglabx=false;
     flaglaby=false;
     flaglabz=false;
+    var gn=GridMeshVertexArray.length; 
+    var pr=pointSample.length;
+    var interiorpoints=gn-pr;
     labx.getObject("vx", function ( result ) { // recover the value of a variable from the lab
           for (var i=0;i<n;i++){
               hemesh.positions[i].setX(result[i]);
+              if(i<interiorpoints){
+                  hemesh.positions[gn+i].setX(result[i]);
+              }
           }
-          console.log(result[0]);
-          //console.log(result);
+          //console.log(result[0]);
           flaglabx=true;
-          console.log(flaglabx);
+          //console.log(flaglabx);
           labx.close();
     });	
     laby.getObject("vy", function ( result ) { // recover the value of a variable from the lab
         for (var i=0;i<n;i++){
               hemesh.positions[i].setY(result[i]);
+              if(i<interiorpoints){
+                  hemesh.positions[gn+i].setY(result[i]);
+              }
         }
-        console.log(result[0]);
+        //console.log(result[0]);
         flaglaby=true;
-        //console.log(result);
-        console.log(flaglaby);
+        //console.log(flaglaby);
         laby.close();
     });
     labz.getObject("vz", function ( result ) { // recover the value of a variable from the lab
         for (var i=0;i<n;i++){
               hemesh.positions[i].setZ(result[i]);
+              if(i<interiorpoints){
+                  hemesh.positions[gn+i].setZ(-result[i]);
+              }
         }
-        console.log(result[0]);
+        //console.log(result[0]);
         flaglabz=true;
-        console.log(flaglabz);
-        //console.log(result);
+        //console.log(flaglabz);
         labz.close();
     });
     //console.log(vx,vy,vz);

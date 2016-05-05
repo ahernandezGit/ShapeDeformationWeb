@@ -70,6 +70,7 @@ function createMesh2(){
     FixedVertex.reverse();
     return [fac,vtx];
 }
+
 function drawMesh(yes){
     var mesh=setup.scene.getObjectByName("mesh");
     if(mesh!= undefined){

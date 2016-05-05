@@ -27,30 +27,25 @@ function fixBoundaryPoints() {
       }
  }
 function inflationFunction3(){
+     
     L=uniformLaplacian();
-    //var fL=full(L);
-    //var lt=transposeMatrix(fL);
-    //Ltl=sparse(mulMatrixMatrix(lt,fL));
-    //invLtL=inv(full(Ltl));
+
     FirstMatrixtoProcessCurvatureEdgeLength();
+    matrixtoProcessCurvatureEdgeLength();
+    
     var ci=FisrtIterationCurvaturesProcess();
     //console.log(ci);
     var el=FisrtIterationEdgeLength();
     //console.log(el);
     var etaij=computeEdgeVector(el);
     var laplacian=computeIntegratedLaplacian(ci);
-    //console.log(laplacian);
-    //prova10();
-    IterationUpdateVector(laplacian,etaij);
-    //provaReconstruction();
-    //provaConstrain();
-    matrixtoProcessCurvatureEdgeLength();
+ 
+    IterationUpdateVector(laplacian,etaij);    
     var t=0;
-    while(t<1){
+    while(t<2){
         var cid=IterationCurvaturesProcess(ci);
-        //console.log(ci);
         var eld=IterationEdgeLength(el);
-    //console.log(el);
+   
         var etaijd=computeEdgeVector(eld);
         var laplaciand=computeIntegratedLaplacian(cid);
         IterationUpdateVector(laplaciand,etaijd);
@@ -62,6 +57,7 @@ function inflationFunction3(){
     Ac={};
     AcT={};
     invAcTAc={};
+    ListOfCurves.push([0,FixedVertex.length-1]);
 }
 
 function createInicialMesh() {
@@ -82,7 +78,7 @@ function createInicialMesh() {
         polygonOffsetUnits: 0.1
     }));
  
-     var wireframe = new THREE.LineSegments(wireframeLines, new THREE.LineBasicMaterial({
+    var wireframe = new THREE.LineSegments(wireframeLines, new THREE.LineBasicMaterial({
         color: 0xff2222,
         opacity: 0.2,
         transparent: true,
@@ -109,22 +105,25 @@ function createInicialMesh() {
        setup.scene.remove(debuglines2);
     }
     gridgeometry={};    
-     
+    ListOfCurvesGeometry.push(new THREE.Geometry());
+    for(var i=0;i<LineSample.geometry.vertices.length-1;i++){
+        ListOfCurvesGeometry[0].vertices.push(LineSample.geometry.vertices[i],LineSample.geometry.vertices[i+1]);
+    }
+    ListOfCurvesObject[0]=new THREE.LineSegments(ListOfCurvesGeometry[0], materialSample);
+    setup.scene.remove(LineSample);
+    setup.scene.add(ListOfCurvesObject[0]);
     setup.scene.add(mesh,wireframe);
      
 }
 function OtherMouseControls() {
-     
      points=[];
      console.log(points);
-     canvaswindows.on("mousedown",null);
-     canvaswindows.on("mouseup",null);
-     canvaswindows.on("mousemove",null);
+     //canvaswindows.on("mousedown",null);
+     ///canvaswindows.on("mouseup",null);
+     //canvaswindows.on("mousemove",null);
      setup.controls.enabled=true;
      cancelRender=false;
      render();
-     //canvaswindows.removeEventListener('click', onMouseClick);
-     //window.addEventListener( 'mousemove', onMouseMove, false );
 }
 
 function saveTextAsFile(textToWrite){
@@ -242,6 +241,8 @@ d3.select('#opButton').on('click',function () {
  });
  d3.select('#inflationButton').on('click',function(){
      inflationFunction3();
+     ModeDrawInitialCurve=false;
+     ModeFibermesh=true;
  });
  d3.select('#meshButton').on('click',function(){
      createInicialMesh();
@@ -293,11 +294,13 @@ d3.select("#uploadButton").on("click",function(){
 
 d3.select("#radioSBS").on("click",function(){
    document.getElementById("buttonsSBS").style.display="block"; 
+   document.getElementById("buttonsFiber").style.display="none"; 
    mode="sbs";
 });
 d3.select("#radioFibermesh").on("click",function(){
    console.log("fibermesh");
    document.getElementById("buttonsSBS").style.display="none"; 
+   document.getElementById("buttonsFiber").style.display="block"; 
    mode="fiber";
    if(points.length!=0){    
        fixBoundaryPoints(); 
@@ -308,3 +311,22 @@ d3.select("#radioFibermesh").on("click",function(){
    //setTimeout(cancelAnimation,1000);     
 });
 d3.select("#fileToLoad").on("change",loadFileAsText);
+
+d3.select("#cdButton").on("click",function(){
+     setup.controls.enabled=false;
+     ModeCurveDeformation=true;     
+     ModeFibermesh=false;
+     ModeDrawInitialCurve=false;
+     ModeDebug=false;
+     //canvaswindows.on("mousedown",null);
+     //canvaswindows.on("mouseup",null);
+     //canvaswindows.on("mousemove",null);
+     
+});
+d3.select("#startButton").on("click",function(){
+     setup.controls.enabled=true;
+     ModeCurveDeformation=false;     
+     ModeFibermesh=true;
+     ModeDrawInitialCurve=false;
+     ModeDebug=false;
+});

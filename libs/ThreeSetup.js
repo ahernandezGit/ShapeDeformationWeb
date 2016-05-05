@@ -40,6 +40,156 @@ ThreeSetup.prototype.resize = function() {
 }
 
 ThreeSetup.prototype.render = function() {
-	this.controls.update();
-	this.renderer.render(this.scene, this.camera);
+    if(ModeCurveDeformation){
+        flagIntersectionCurve=false;
+        raycasterCurve.setFromCamera( mouse, setup.camera );
+        //raycasterCurve.linePrecision=sizeGrid/8;
+        var mesh=setup.scene.getObjectByName("mesh");
+        var intersects = raycasterCurve.intersectObject(mesh);
+        var pointGeometry = new THREE.Geometry();
+        var whatcurve=-1;
+        var whatpoint=-1;
+        if ( intersects.length > 0 ) {
+            var intersect = intersects[0];
+            var a=intersect.face.a;
+            var b=intersect.face.b;
+            var c=intersect.face.c;
+           
+            for(var i=0;i<ListOfCurves.length;i++){
+                for(var j=ListOfCurves[i][0];j<=ListOfCurves[i][1];j++){
+                    if(a==FixedVertex[j]){
+                        var other=-1;
+                        whatcurve=i;
+                        var j1=j+1;
+                        var jm1=j-1;
+                        if(j1==ListOfCurves[i][1]+1){
+                            j1=ListOfCurves[i][0];
+                        }
+                        if(jm1==ListOfCurves[i][0]-1){
+                            jm1=ListOfCurves[i][1];
+                        }    
+                        if(b==FixedVertex[j1] || b==FixedVertex[jm1]){
+                            other=b;
+                        }
+                        else if(c==FixedVertex[j1] || c==FixedVertex[jm1]){
+                            other=c;
+                        }
+                        var da=hemesh.positions[a].distanceTo(intersect.point);
+                        if(other!=-1){
+                            var dother=hemesh.positions[other].distanceTo(intersect.point);
+                            if(da<dother){
+                              whatpoint=a;   
+                            }
+                            else{
+                                whatpoint=other;
+                            }
+                        }
+                        else{
+                            whatpoint=a;
+                        }
+                        flagIntersectionCurve=true;
+                        break;
+                    }
+                    else if(b==FixedVertex[j]){
+                        var other=-1;
+                        whatcurve=i;
+                        var j1=j+1;
+                        var jm1=j-1;
+                        if(j1==ListOfCurves[i][1]+1){
+                            j1=ListOfCurves[i][0];
+                        }
+                        if(jm1==ListOfCurves[i][0]-1){
+                            jm1=ListOfCurves[i][1];
+                        }    
+                        if(a==FixedVertex[j1] || a==FixedVertex[jm1]){
+                            other=a;
+                        }
+                        else if(c==FixedVertex[j1] || c==FixedVertex[jm1]){
+                            other=c;
+                        }
+                        var db=hemesh.positions[b].distanceTo(intersect.point);
+                        if(other!=-1){
+                            var dother=hemesh.positions[other].distanceTo(intersect.point);
+                            if(db<dother){
+                              whatpoint=b;   
+                            }
+                            else{
+                                whatpoint=other;
+                            }
+                        }
+                        else{
+                            whatpoint=b;
+                        }
+                        flagIntersectionCurve=true;
+                        break;    
+                    }
+                    else if(c==FixedVertex[j]){
+                        var other=-1;
+                        whatcurve=i;
+                        var j1=j+1;
+                        var jm1=j-1;
+                        if(j1==ListOfCurves[i][1]+1){
+                            j1=ListOfCurves[i][0];
+                        }
+                        if(jm1==ListOfCurves[i][0]-1){
+                            jm1=ListOfCurves[i][1];
+                        }    
+                        if(b==FixedVertex[j1] || b==FixedVertex[jm1]){
+                            other=b;
+                        }
+                        else if(a==FixedVertex[j1] || a==FixedVertex[jm1]){
+                            other=a;
+                        }
+                        var dc=hemesh.positions[c].distanceTo(intersect.point);
+                        if(other!=-1){
+                            var dother=hemesh.positions[other].distanceTo(intersect.point);
+                            if(dc<dother){
+                              whatpoint=c;   
+                            }
+                            else{
+                                whatpoint=other;
+                            }
+                        }
+                        else{
+                            whatpoint=c;
+                        }
+                        flagIntersectionCurve=true;
+                        break;    
+                    }
+                }
+            }
+          
+        }
+        else {
+            flagIntersectionCurve=false;
+        }
+        
+        if(flagIntersectionCurve){
+            ListOfCurvesObject[whatcurve].material.color.set(0xDF7401);
+            pointGeometry.vertices.push(hemesh.positions[whatpoint]);
+            //pointGeometry.vertices.push(intersect.object.geometry.vertices[p2]);
+            var pointmaterial = new THREE.PointsMaterial( {color: 0x27B327, size: 10.0, sizeAttenuation: false, alphaTest: 0.5 } );
+
+            var particlesC=setup.scene.getObjectByName("intersectPoints"); 
+            if(particlesC!=undefined){
+                setup.scene.remove( particlesC );
+            }
+
+            particlesC = new THREE.Points( pointGeometry, pointmaterial );
+            particlesC.name="intersectPoints";
+            setup.scene.add( particlesC );
+            indexPointToEdit=whatpoint;
+        }
+        else{
+            //ListOfCurvesObject[whatcurve].material.color.set(0x0015FF);
+            var particlesC=setup.scene.getObjectByName("intersectPoints"); 
+            ListOfCurvesObject[0].material.color.set(0x0015FF);
+            if(particlesC!= undefined){
+                setup.scene.remove( particlesC );
+            }
+            indexPointToEdit=-1;
+        }
+    }
+    this.controls.update();
+    this.renderer.render(this.scene, this.camera);
 }

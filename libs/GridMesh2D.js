@@ -1103,7 +1103,7 @@ function endAssociated2(){
     //var Bgeometry= new THREE.Object3D();
     for(var i=0;i<n;i++){
         if(gridBoundary[i].associated.indexOf(0)==-1){
-            gridBoundary[i].associated.sort();    
+            gridBoundary[i].associated=gridBoundary[i].associated.sort();    
         }
     }
      for(var i=0;i<n;i++){
@@ -1111,10 +1111,10 @@ function endAssociated2(){
         var c=gridBoundary[i].associated[gridBoundary[i].associated.length-1]; 
         var d=gridBoundary[(i+1)%n].associated[0];  
         
-        //console.log("iboundary ",i); 
-        //console.log("i ",gridI[gridBoundary[i].index]);  
-        //console.log("j ",gridBoundary[i].index-(height+1)*gridI[gridBoundary[i].index]);
-        //console.log("boundary i+1",gridBoundary[(i+1)%n].associated); 
+        console.log("iboundary ",i); 
+        console.log("i ",gridI[gridBoundary[i].index]);  
+        console.log("j ",gridBoundary[i].index-(height+1)*gridI[gridBoundary[i].index]);
+        console.log("boundary i+1",gridBoundary[(i+1)%n].associated); 
         if(c!=d) {
             var v0=Victor.fromArray([gridPointsArray[gridBoundary[i].index].x,gridPointsArray[gridBoundary[i].index].y]);
             var v00=Victor.fromArray([gridPointsArray[gridBoundary[(i+1)%n].index].x,gridPointsArray[gridBoundary[(i+1)%n].index].y]);
@@ -1130,14 +1130,14 @@ function endAssociated2(){
                 
               gridBoundary[i].associated.push(d);   
               //edge.vertices.push(gridPointsArray[gridBoundary[i].index],pointSample[d]);    
-              //console.log("iadd",i);    
-              //console.log(gridBoundary[i].associated);    
+              console.log("iadd",i);    
+              console.log(gridBoundary[i].associated);    
             }
             else{
               gridBoundary[(i+1)%n].associated.unshift(c);
               //edge.vertices.push(gridPointsArray[gridBoundary[(i+1)%n].index],pointSample[c]);
-              //console.log("i+1 add",(i+1)%n);
-              //console.log(gridBoundary[(i+1)%n].associated);        
+              console.log("i+1 add",(i+1)%n);
+              console.log(gridBoundary[(i+1)%n].associated);        
             }
             //var line = new THREE.Line(edge,material);
             //Bgeometry.add(line);  
