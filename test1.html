@@ -40,6 +40,7 @@
       <script src="http://mlweb.loria.fr/lalolibworker.js"></script>
      <script src="libs/numeric-1.2.6.js"></script>
       -->
+    <script src="libs/CurveDeformation.js"></script>     
     <script  type="application/x-javascript" src="libs/lalolib/lalolib.js"></script>
     <script src="libs/d3.min.js"></script>
     <script src="libs/doubly-linked-list.js"></script>    
@@ -63,15 +64,19 @@
             <button id="meshButton">Mesh Inicial</button>     
             <button id="drawButton">Draw</button>    
             <button id="clearButton">Clear </button>
-            <button id="finishButton">Finish</button>  
-            
+            <button id="finishButton">Finish</button>    
             <button id="uploadButton">Upload</button>
             <button id="exportButton">Export</button>
             <input type="file" id="fileToLoad" >
             </p>
         </div>
         <input type="radio" name="gender" id="radioFibermesh"> Fibermesh mode <br/>  
-     
+        <div id="buttonsFiber" class="stepbystep">
+            <p>
+            <button id="cdButton">CurveDef</button>
+            <button id="startButton">Start</button>
+            </p>
+        </div>
         </div>
 	<script>
         var requestIdAnimation;
@@ -83,18 +88,19 @@
         var isDrawing=false;
         var LastPoint,CurrentPoint;
         var sizeGrid=document.getElementById("sizeGridBar").value;
-        console.log(sizeGrid);
         var LineSample = new THREE.Object3D();
         var LineStroke = new THREE.Object3D();
         var gridgeometry = new THREE.Object3D();
         var checkGrid=document.getElementById("checkGrid");
         var checkMesh=document.getElementById("checkMesh");
+        
         gridgeometry.name="Grid2D";
         LineSample.name="LineSample";
         materialReal = new THREE.LineBasicMaterial( { color: 0xff0000, linewidth: 2 } );
         materialSample = new THREE.LineBasicMaterial( { color: 0x0015FF, linewidth: 2 } );
         materialGrid2D = new THREE.LineBasicMaterial( { color: 0xff2222, linewidth: 1 } );
         materialBoundaryGrid = new THREE.LineBasicMaterial( { color: 0x27B327, linewidth: 2 });
+        var raycasterCurve = new THREE.Raycaster();
         var width,height,starx,stary;   
         var points = [ ], pointSample = [ ];
         //array of grid points
@@ -115,6 +121,35 @@
         
         // mode of the application
         var mode="sbs";
+        
+         //Manage the distints modes of draw and manipulation 
+        var ModeDrawInitialCurve=true;
+        var ModeFibermesh=false;
+        var ModeCurveDeformation=false;
+        var ModeDebug=false;
+        
+        
+        // index in hemesh of  points to edit (ROI)
+        var IndexPointToEdit=[];
+        var time=0;
+        var timeNow=0;
+        var flagIntersectionCurve=false;
+        var isDeforming=false;
+        var mouseLast2D=new THREE.Vector2();
+        var mouseCurrent2D=new THREE.Vector2();
+        var sphereMouseGeometry = new THREE.SphereGeometry(sizeGrid/2, 20, 20, 0, Math.PI * 2, 0, Math.PI * 2);
+        var sphereMaterial = new THREE.MeshBasicMaterial( {color: 0xffff00,transparent: true, opacity:0.5} );
+        var sphereMouse = new THREE.Mesh(sphereMouseGeometry, sphereMaterial);
+        //index in a LineSample curve
+        var indexPointToEdit=-1;
+        var accelerationMouse=0;
+        var plane=new planeToDeforming(setup.camera.getWorldDirection(),0,0,0);
+        function mousePosition2D(event){
+              var mouse=new THREE.Vector2();
+              mouse.x = ( event.clientX / window.innerWidth ) * 2 - 1;
+              mouse.y = - ( event.clientY / window.innerHeight ) * 2 + 1;		
+              return mouse;
+        }
         function mousePosition3D(event){
             // calculate mouse position in normalized device coordinates
             // (-1 to +1) for both components
@@ -136,51 +171,107 @@
         }
         function onMouseMove() {
             event=d3.event;
-            if (!isDrawing) return;
-            CurrentPoint=mousePosition3D(event);
-            points.push(CurrentPoint);
-            //console.log(points);
-            var geometryLine = new THREE.Geometry();
-            geometryLine.vertices.push(LastPoint,CurrentPoint);
-            LastPoint=CurrentPoint;
-            var line = new THREE.Line( geometryLine, materialReal );
-            LineStroke.add(line);
-            //setup.scene.add( line );
+            if(ModeDrawInitialCurve){
+                if (!isDrawing) return;
+                CurrentPoint=mousePosition3D(event);
+                points.push(CurrentPoint);
+                //console.log(points);
+                var geometryLine = new THREE.Geometry();
+                geometryLine.vertices.push(LastPoint,CurrentPoint);
+                LastPoint=CurrentPoint;
+                var line = new THREE.Line( geometryLine, materialReal );
+                LineStroke.add(line);
+                //setup.scene.add( line );
+            }
+            if(ModeCurveDeformation){
+                mouseCurrent2D=mousePosition2D(event);
+                mouse.set(mouseCurrent2D.x,mouseCurrent2D.y);
+                if(!isDeforming) return;
+                timeNow=Date.now();
+                var steptime=timeNow-time;
+                var steptimesquare=steptime*steptime;
+                var acceleration=mouseCurrent2D.distanceTo(mouseLast2D)/steptimesquare;
+                var percent=0;
+                if(accelerationMouse!=0){
+                    percent=acceleration/accelerationMouse;
+                    if(percent<1){
+                        percent=-percent;
+                    }
+                    accelerationMouse=acceleration;
+                }
+                
+                updateROI();
+                sphereMouse.scale.x += 0.1;
+                sphereMouse.scale.y += 0.1;
+                sphereMouse.scale.z += 0.1;
+                accelerationMouse=acceleration;
+                mouseLast2D.set(mouseCurrent2D.x,mouseCurrent2D.y);
+                time=timeNow;
+            }
         }
-        function onMouseDown () {
-            clearScene();
+        function onMouseDown() {
             event=d3.event;
-            isDrawing = true;
-            setup.scene.add(LineStroke);
-            LastPoint=mousePosition3D(event);
-            points.push(LastPoint);  
-            //render();
+            if(ModeDrawInitialCurve){
+                clearScene();
+                isDrawing = true;
+                setup.scene.add(LineStroke);
+                LastPoint=mousePosition3D(event);
+                points.push(LastPoint);  
+                //render();
+            } 
+           if(ModeCurveDeformation){
+                 if(flagIntersectionCurve){
+                     isDeforming=true;
+                     time=Date.now();
+                     mouseLast2D=mousePosition2D(event);
+                     mouse=mouseLast2D;
+                     updateROI();
+                     sphereMouse.scale.x = 0;
+                     sphereMouse.scale.y = 0;
+                     sphereMouse.scale.z = 0;
+                     var pointToEdit=hemesh.positions[indexPointToEdit];
+                     //console.log(time);
+                     
+                     //computing parallel plane where translate the vector
+                     plane=new planeToDeforming(setup.camera.getWorldDirection(),pointToEdit.x,pointToEdit.y,pointToEdit.z);
+                     setup.scene.add(sphereMouse);
+                 }
+            }
         }
     
-        function onMouseUp () {
-             event=d3.event;
-             isDrawing = false;
-             //console.log(points);
-             Resample(points);
-             setup.scene.remove( LineStroke );
-             createGrid();
-             drawGrid(true);
-             GrowingFeed();
-             ptd=MappingVerteToStroke2();
-             console.log(ptd);
-             drawAssociated();  
-             if(mode=="fiber"){
-               fixBoundaryPoints(); 
-               createInicialMesh();     
-               inflationFunction3();
-               OtherMouseControls();     
-             }
-             else{
-               drawBoundary(gridBoundary);
-               cancelRender=false;
-               render();    
-             }
-             
+        function onMouseUp() {
+            if(ModeDrawInitialCurve){
+                 event=d3.event;
+                 isDrawing = false;
+                 //console.log(points);
+                 Resample(points);
+                 setup.scene.remove( LineStroke );
+                 createGrid();
+                 drawGrid(true);
+                 GrowingFeed();
+                 ptd=MappingVerteToStroke2();
+                 console.log(ptd);
+                 drawAssociated();  
+                 if(mode=="fiber"){
+
+                   fixBoundaryPoints(); 
+                   createInicialMesh();     
+                   inflationFunction3();
+                   ModeDrawInitialCurve=false;
+                   ModeFibermesh=true;
+                   OtherMouseControls();     
+                 }
+                 else{
+                   drawBoundary(gridBoundary);
+                   cancelRender=false;
+                   render();    
+                 }
+            }
+            if(ModeCurveDeformation){
+                isDeforming=false;
+                accelerationMouse=0;
+                setup.scene.remove(sphereMouse);
+            }
         }
         
         function clearScene(){
@@ -204,6 +295,10 @@
               GridMeshFacesArray=[];
               TableHashIndextoPosition=[];
               cancelRender=false;
+              ModeFibermesh=false;
+              ModeCurveDeformation=false;
+              ModeDrawInitialCurve=true;
+              //FirstMesh=true;
               render();
          }
         
