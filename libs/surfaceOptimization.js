@@ -103,7 +103,7 @@ function uniformLaplacian(){
 }
 function matrixtoProcessCurvatureEdgeLength(){
     var n=L.n;
-    var fL=full(L);
+    //var fL=full(L);
     var A=zeros(2*n,n);
     for(var i=n;i<2*n;i++){
         // 1.0 for fixed vertices
@@ -115,34 +115,46 @@ function matrixtoProcessCurvatureEdgeLength(){
             A.val[i*A.n+i-n]=0.1;           
         }
     }
-    for(var i=0;i<n;i++){
-        for(var j=0;j<n;j++){
-            A.val[i*n+j]=fL.val[i*n+j];       
-        }  
+    var ri = 0;
+    for (var i = 0; i < n; i++) {
+			var s = L.rows[i];
+			var e = L.rows[i+1];
+			for ( var k=s; k < e; k++) {
+				A.val[ri + L.cols[k] ] = L.val[k];
+			}
+			ri += n; 
     }
     Ac=sparse(A);
-    AcT=transposespMatrix(Ac);  
-    var AtA=mulspMatrixspMatrix(AcT,Ac);
-    invAcTAc=inv(AtA);
+    if(n<900){   
+        AcT=transposespMatrix(Ac);  
+        var AtA=mulspMatrixspMatrix(AcT,Ac);
+        invAcTAc=inv(AtA);
+    }
+
 }
 function FirstMatrixtoProcessCurvatureEdgeLength(){
     var n=L.n;
-    var fL=full(L);
+    //var fL=full(L);
     var m=n+FixedVertex.length;
     var A=zeros(m,n);
     for(var i=n;i<m;i++){
         A.val[i*A.n+FixedVertex[i-n]]=1.0;            
     }
-    for(var i=0;i<n;i++){
-        for(var j=0;j<n;j++){
-            A.val[i*n+j]=fL.val[i*n+j];       
-        }
+    var ri = 0;
+    for (var i = 0; i < n; i++) {
+			var s = L.rows[i];
+			var e = L.rows[i+1];
+			for ( var k=s; k < e; k++) {
+				A.val[ri + L.cols[k] ] = L.val[k];
+			}
+			ri += n; 
     }
     First_Ac=sparse(A);
-    First_AcT=transposespMatrix(First_Ac);
-    var AtA=mulspMatrixspMatrix(First_AcT,First_Ac);
-    var QR=qr(AtA,true);
-    First_invAcTAc=inv(AtA);
+    if(n<900){   
+        First_AcT=transposespMatrix(First_Ac);
+        var AtA=mulspMatrixspMatrix(First_AcT,First_Ac);
+        First_invAcTAc=inv(AtA);
+    }
 }
 
 function FisrtIterationCurvaturesProcess(){
@@ -172,8 +184,13 @@ function FisrtIterationCurvaturesProcess(){
     console.log("comprovation finish");
     return c2;
     */
-    
-    var c=mulMatrixVector(First_invAcTAc,mulspMatrixVector(First_AcT,b));
+    if(n<900){
+        var c=mulMatrixVector(First_invAcTAc,mulspMatrixVector(First_AcT,b));
+    }
+    else{
+        var c=spcgnr(First_Ac,b);
+        console.log(n);
+    }
     return c;
 }
 //weights were advice of Andrew Nealen
@@ -192,7 +209,13 @@ function IterationCurvaturesProcess(cc){
         
     }
     //var c=cgnr(A,b);
-    var c=mulMatrixVector(invAcTAc,mulspMatrixVector(AcT,b));
+    if(n<900){
+        var c=mulMatrixVector(invAcTAc,mulspMatrixVector(AcT,b));
+    }
+    else{
+        var c=spcgnr(Ac,b);
+        console.log(n);
+    }
     //console.log(c.length);
     return c;
 }
@@ -230,7 +253,12 @@ function FisrtIterationEdgeLength(){
    
     //var el=cgnr(A,b);
     //console.log(c.length);
-    var el=mulMatrixVector(First_invAcTAc,mulspMatrixVector(First_AcT,b));
+    if(n<900){
+        var el=mulMatrixVector(First_invAcTAc,mulspMatrixVector(First_AcT,b));
+    }
+    else{
+        var el=spcgnr(First_Ac,b);
+    }
     First_Ac={};
     First_AcT={};
     First_invAcTAc={};
@@ -256,7 +284,12 @@ function IterationEdgeLength(el){
         }
     }
     //var el=cgnr(A,b);
-    var el=mulMatrixVector(invAcTAc,mulspMatrixVector(AcT,b));
+    if(n<900){
+        var el=mulMatrixVector(invAcTAc,mulspMatrixVector(AcT,b));
+    }
+    else{
+        var el=spcgnr(Ac,b);
+    }
     //console.log(el.length);
     return el;
 }
@@ -332,15 +365,19 @@ function computeIntegratedLaplacian(curvature){
 //weight was advice from Andrew Nealen
 function IterationUpdateVector(lapla,etaarray){
     var n=lapla.length;
-    var fL=full(L);
+    //var fL=full(L);
     var m=etaarray.length;
     var r=FixedVertex.length;
     var A=zeros(n+r+m,n);
     var b=zeros(n+r+m,3);
+    var ri = 0;
     for(var i=0;i<n;i++){
-        for(var j=0;j<n;j++){
-            A.val[i*A.n+j]=fL.val[i*L.n+j];       
+        var s = L.rows[i];
+        var e = L.rows[i+1];
+        for ( var k=s; k < e; k++) {
+            A.val[ri + L.cols[k] ] = L.val[k];
         }
+        ri += n; 
         b.val[3*i]=lapla[i].x;
         b.val[3*i+1]=lapla[i].y;
         b.val[3*i+2]=lapla[i].z;
@@ -370,36 +407,98 @@ function IterationUpdateVector(lapla,etaarray){
     var by=getCols(b,[1]);
     var bz=getCols(b,[2]);
     var spA=sparse(A);
-    var AT=transposespMatrix(spA);  
-    var AtA=mulspMatrixspMatrix(AT,spA);
-    var invATA=inv(AtA);
-    var labx = new Lalolab("laloxname",false,"libs/lalolib") ; 
-    var laby = new Lalolab("laloyname",false,"libs/lalolib") ; 
-    var labz = new Lalolab("lalozname",false,"libs/lalolib") ; 
-    labx.load(AT, "AT"); 
-    labx.load(invATA, "invATA"); 
-    labx.load(bx, "bx");
-    laby.load(AT, "AT"); 
-    laby.load(invATA, "invATA"); 
-    laby.load(by, "by");
-    labz.load(AT, "AT"); 
-    labz.load(invATA, "invATA"); 
-    labz.load(bz, "bz");
-    labx.exec("vx= mulMatrixVector(invATA,mulspMatrixVector(AT,bx))");	
-    laby.exec("vy= mulMatrixVector(invATA,mulspMatrixVector(AT,by))");	
-    labz.exec("vz= mulMatrixVector(invATA,mulspMatrixVector(AT,bz))");	
-    flaglabx=false;
-    flaglaby=false;
-    flaglabz=false;
-    var gn=GridMeshVertexArray.length; 
-    var pr=pointSample.length;
-    var interiorpoints=gn-pr;
+    if(n<900){
+        var AT=transposespMatrix(spA);  
+        var AtA=mulspMatrixspMatrix(AT,spA);
+        var invATA=inv(AtA);
+        var labx = new Lalolab("laloxname",false,"libs/lalolib") ; 
+        var laby = new Lalolab("laloyname",false,"libs/lalolib") ; 
+        var labz = new Lalolab("lalozname",false,"libs/lalolib") ; 
+        labx.load(AT, "AT"); 
+        labx.load(invATA, "invATA"); 
+        labx.load(bx, "bx");
+        laby.load(AT, "AT"); 
+        laby.load(invATA, "invATA"); 
+        laby.load(by, "by");
+        labz.load(AT, "AT"); 
+        labz.load(invATA, "invATA"); 
+        labz.load(bz, "bz");
+        labx.exec("vx= mulMatrixVector(invATA,mulspMatrixVector(AT,bx))");	
+        laby.exec("vy= mulMatrixVector(invATA,mulspMatrixVector(AT,by))");	
+        labz.exec("vz= mulMatrixVector(invATA,mulspMatrixVector(AT,bz))");	
+        flaglabx=false;
+        flaglaby=false;
+        flaglabz=false;
+        /*var gn=GridMeshVertexArray.length; 
+        var pr=pointSample.length;
+        var interiorpoints=gn-pr;
+        labx.getObject("vx", function ( result ) { // recover the value of a variable from the lab
+              for (var i=0;i<n;i++){
+                  hemesh.positions[i].setX(result[i]);
+                  if(i<interiorpoints){
+                      hemesh.positions[gn+i].setX(result[i]);
+                  }
+              }
+              //console.log(result[0]);
+              flaglabx=true;
+              //console.log(flaglabx);
+              labx.close();
+        });	
+        laby.getObject("vy", function ( result ) { // recover the value of a variable from the lab
+            for (var i=0;i<n;i++){
+                  hemesh.positions[i].setY(result[i]);
+                  if(i<interiorpoints){
+                      hemesh.positions[gn+i].setY(result[i]);
+                  }
+            }
+            //console.log(result[0]);
+            flaglaby=true;
+            //console.log(flaglaby);
+            laby.close();
+        });
+        labz.getObject("vz", function ( result ) { // recover the value of a variable from the lab
+            for (var i=0;i<n;i++){
+                  hemesh.positions[i].setZ(result[i]);
+                  if(i<interiorpoints){
+                      hemesh.positions[gn+i].setZ(-result[i]);
+                  }
+            }
+            //console.log(result[0]);
+            flaglabz=true;
+            //console.log(flaglabz);
+            labz.close();
+        });
+        //console.log(vx,vy,vz);
+        */
+        /*
+        var vx=mulMatrixVector(invATA,mulspMatrixVector(AT,bx));
+        var vy=mulMatrixVector(invATA,mulspMatrixVector(AT,by));
+        var vz=mulMatrixVector(invATA,mulspMatrixVector(AT,bz));
+        for (var i=0;i<n;i++){
+            hemesh.positions[i].set(vx[i],vy[i],vz[i]);
+            //hemesh.moveVertexTo(i, new THREE.Vector3(vx[i], vy[i], vz[i]));
+        }*/
+    }
+    else{
+        var labx = new Lalolab("laloxname",false,"libs/lalolib") ; 
+        var laby = new Lalolab("laloyname",false,"libs/lalolib") ; 
+        var labz = new Lalolab("lalozname",false,"libs/lalolib") ; 
+        labx.load(spA, "spA");
+        laby.load(spA, "spA");
+        labz.load(spA, "spA");
+        labx.load(bx, "bx");
+        laby.load(by, "by");
+        labz.load(bz, "bz");
+        labx.exec("vx=spcgnr(spA,bx)");	
+        laby.exec("vy=spcgnr(spA,by)");	
+        labz.exec("vz=spcgnr(spA,bz)");
+        flaglabx=false;
+        flaglaby=false;
+        flaglabz=false;
+    }
     labx.getObject("vx", function ( result ) { // recover the value of a variable from the lab
           for (var i=0;i<n;i++){
               hemesh.positions[i].setX(result[i]);
-              if(i<interiorpoints){
-                  hemesh.positions[gn+i].setX(result[i]);
-              }
           }
           //console.log(result[0]);
           flaglabx=true;
@@ -409,9 +508,6 @@ function IterationUpdateVector(lapla,etaarray){
     laby.getObject("vy", function ( result ) { // recover the value of a variable from the lab
         for (var i=0;i<n;i++){
               hemesh.positions[i].setY(result[i]);
-              if(i<interiorpoints){
-                  hemesh.positions[gn+i].setY(result[i]);
-              }
         }
         //console.log(result[0]);
         flaglaby=true;
@@ -421,26 +517,13 @@ function IterationUpdateVector(lapla,etaarray){
     labz.getObject("vz", function ( result ) { // recover the value of a variable from the lab
         for (var i=0;i<n;i++){
               hemesh.positions[i].setZ(result[i]);
-              if(i<interiorpoints){
-                  hemesh.positions[gn+i].setZ(-result[i]);
-              }
         }
         //console.log(result[0]);
         flaglabz=true;
         //console.log(flaglabz);
         labz.close();
     });
-    //console.log(vx,vy,vz);
-    /*var vx=mulMatrixVector(invATA,mulspMatrixVector(AT,bx));
-    var vy=mulMatrixVector(invATA,mulspMatrixVector(AT,by));
-    var vz=mulMatrixVector(invATA,mulspMatrixVector(AT,bz));
-    for (var i=0;i<n;i++){
-        hemesh.positions[i].set(vx[i],vy[i],vz[i]);
-        //hemesh.moveVertexTo(i, new THREE.Vector3(vx[i], vy[i], vz[i]));
-    }
-    */
     console.log("update vertex finish");
-    
 }
 function updateRenderMesh(){
     if(flaglabx && flaglaby && flaglabz){
