@@ -73,7 +73,8 @@
         <input type="radio" name="gender" id="radioFibermesh"> Fibermesh mode <br/>  
         <div id="buttonsFiber" class="stepbystep">
             <p>
-            <button id="cdButton">CurveDef</button>
+            <button id="cdButton">EditCurve</button>
+            <button id="cdButton">AddCurve</button>    
             <button id="startButton">Start</button>
             </p>
         </div>
@@ -142,7 +143,7 @@
         var sphereMouse = new THREE.Mesh(sphereMouseGeometry, sphereMaterial);
         //index in a LineSample curve
         var indexPointToEdit=-1;
-        var accelerationMouse=0;
+        //var accelerationMouse=0;
         var plane=new planeToDeforming(setup.camera.getWorldDirection(),0,0,0);
         function mousePosition2D(event){
               var mouse=new THREE.Vector2();
@@ -184,27 +185,25 @@
                 //setup.scene.add( line );
             }
             if(ModeCurveDeformation){
-                mouseCurrent2D=mousePosition2D(event);
-                mouse.set(mouseCurrent2D.x,mouseCurrent2D.y);
+                var newpos=mousePosition2D(event);
+                mouseCurrent2D.set(event.clientX,event.clientY);
+                mouse.set(newpos.x,newpos.y);
                 if(!isDeforming) return;
                 timeNow=Date.now();
                 var steptime=timeNow-time;
                 var steptimesquare=steptime*steptime;
                 var acceleration=mouseCurrent2D.distanceTo(mouseLast2D)/steptimesquare;
-                var percent=0;
-                if(accelerationMouse!=0){
-                    percent=acceleration/accelerationMouse;
-                    if(percent<1){
-                        percent=-percent;
-                    }
-                    accelerationMouse=acceleration;
+                if(acceleration>7 && acceleration!= Infinity){
+                    sphereMouse.scale.set(4,4,4);
                 }
-                
+                else if(acceleration>3.5 && sphereMouse.scale.x<4){
+                    sphereMouse.scale.set(2,2,2);
+                }
+                else if(acceleration>2 && sphereMouse.scale.x<2){
+                    sphereMouse.scale.set(1.5,1.5,1.5);
+                }
+                //submesh.setradius(sphereMouseGeometry.parameters.radius*sphereMouse.scale.x);
                 updateROI();
-                sphereMouse.scale.x += 0.1;
-                sphereMouse.scale.y += 0.1;
-                sphereMouse.scale.z += 0.1;
-                accelerationMouse=acceleration;
                 mouseLast2D.set(mouseCurrent2D.x,mouseCurrent2D.y);
                 time=timeNow;
             }
@@ -223,18 +222,18 @@
                  if(flagIntersectionCurve){
                      isDeforming=true;
                      time=Date.now();
-                     mouseLast2D=mousePosition2D(event);
-                     mouse=mouseLast2D;
+                     var newpos=mousePosition2D(event);
+                     mouseLast2D.set(event.clientX,event.clientY);
+                     mouse.set(newpos.x,newpos.y);
                      updateROI();
-                     sphereMouse.scale.x = 0;
-                     sphereMouse.scale.y = 0;
-                     sphereMouse.scale.z = 0;
+                     sphereMouse.scale.set(4,4,4);
                      var pointToEdit=hemesh.positions[indexPointToEdit];
-                     //console.log(time);
+                     console.log(indexPointToEdit);
                      
                      //computing parallel plane where translate the vector
-                     plane=new planeToDeforming(setup.camera.getWorldDirection(),pointToEdit.x,pointToEdit.y,pointToEdit.z);
+                     plane=new planeToDeforming(setup.camera.getWorldDirection(),pointToEdit.x,pointToEdit.y,pointToEdit.z,indexPointToEdit);
                      setup.scene.add(sphereMouse);
+                     submesh= new pathToEdit(4*sphereMouseGeometry.parameters.radius,indexPointToEdit);
                  }
             }
         }
