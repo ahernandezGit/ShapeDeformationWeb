@@ -21,7 +21,6 @@
         .binput{
             display: block;
         }
-        
 	</style>
     
 	<script src="libs/three.js"></script>
@@ -75,6 +74,7 @@
             <p>
             <button id="cdButton">EditCurve</button>
             <button id="cdButton">AddCurve</button>    
+            <button id="changeButton">ChangeType</button>
             <button id="startButton">Start</button>
             </p>
         </div>
@@ -132,17 +132,17 @@
         
         // index in hemesh of  points to edit (ROI)
         var IndexPointToEdit=[];
-        var time=0;
-        var timeNow=0;
         var flagIntersectionCurve=false;
         var isDeforming=false;
         var mouseLast2D=new THREE.Vector2();
         var mouseCurrent2D=new THREE.Vector2();
-        var sphereMouseGeometry = new THREE.SphereGeometry(sizeGrid/2, 20, 20, 0, Math.PI * 2, 0, Math.PI * 2);
-        var sphereMaterial = new THREE.MeshBasicMaterial( {color: 0xffff00,transparent: true, opacity:0.5} );
-        var sphereMouse = new THREE.Mesh(sphereMouseGeometry, sphereMaterial);
+        //var sphereMouseGeometry = new THREE.SphereGeometry(sizeGrid/2, 20, 20, 0, Math.PI * 2, 0, Math.PI * 2);
+        //var sphereMaterial = new THREE.MeshBasicMaterial( {color: 0xffff00,transparent: true, opacity:0.5} );
+        //var sphereMouse = new THREE.Mesh(sphereMouseGeometry, sphereMaterial);
+        var radiusROI=sizeGrid/2;
         //index in a LineSample curve
         var indexPointToEdit=-1;
+        var indexCurvetoEdit=-1;
         //var accelerationMouse=0;
         var plane=new planeToDeforming(setup.camera.getWorldDirection(),0,0,0);
         function mousePosition2D(event){
@@ -185,30 +185,17 @@
                 //setup.scene.add( line );
             }
             if(ModeCurveDeformation){
-                var newpos=mousePosition2D(event);
-                mouseCurrent2D.set(event.clientX,event.clientY);
-                mouse.set(newpos.x,newpos.y);
+                //var newpos=mousePosition2D(event);
+                //mouseCurrent2D.set(event.clientX,event.clientY);
+                //mouse.set(newpos.x,newpos.y);
+                CurrentPoint=mousePosition3D(event);
                 if(!isDeforming) return;
-                timeNow=Date.now();
-                var steptime=timeNow-time;
-                var steptimesquare=steptime*steptime;
-                var acceleration=mouseCurrent2D.distanceTo(mouseLast2D)/steptimesquare;
-                if(acceleration>7 && acceleration!= Infinity){
-                    sphereMouse.scale.set(4,4,4);
-                }
-                else if(acceleration>3.5 && sphereMouse.scale.x<4){
-                    sphereMouse.scale.set(2,2,2);
-                }
-                else if(acceleration>2 && sphereMouse.scale.x<2){
-                    sphereMouse.scale.set(1.5,1.5,1.5);
-                }
-                //submesh.setradius(sphereMouseGeometry.parameters.radius*sphereMouse.scale.x);
-                updateROI();
-                mouseLast2D.set(mouseCurrent2D.x,mouseCurrent2D.y);
-                time=timeNow;
+                submesh.updateROIradius();
+                //mouseLast2D.set(mouseCurrent2D.x,mouseCurrent2D.y);
+                //LastPoint=CurrentPoint;
             }
         }
-        function onMouseDown() {
+        function onMouseDown(){
             event=d3.event;
             if(ModeDrawInitialCurve){
                 clearScene();
@@ -221,23 +208,23 @@
            if(ModeCurveDeformation){
                  if(flagIntersectionCurve){
                      isDeforming=true;
-                     time=Date.now();
-                     var newpos=mousePosition2D(event);
-                     mouseLast2D.set(event.clientX,event.clientY);
-                     mouse.set(newpos.x,newpos.y);
-                     updateROI();
-                     sphereMouse.scale.set(4,4,4);
+                     LastPoint=mousePosition3D(event);
+                     //var newpos=mousePosition2D(event);
+                     //mouseLast2D.set(event.clientX,event.clientY);
+                     //mouse.set(newpos.x,newpos.y);
+                     //updateROI();
+                     //sphereMouse.scale.set(4,4,4);
                      var pointToEdit=hemesh.positions[indexPointToEdit];
-                     console.log(indexPointToEdit);
+                     //console.log(indexPointToEdit);
                      
                      //computing parallel plane where translate the vector
                      plane=new planeToDeforming(setup.camera.getWorldDirection(),pointToEdit.x,pointToEdit.y,pointToEdit.z,indexPointToEdit);
-                     setup.scene.add(sphereMouse);
-                     submesh= new pathToEdit(4*sphereMouseGeometry.parameters.radius,indexPointToEdit);
+                    
+                     //setup.scene.add(sphereMouse);
+                     submesh= new pathToEdit(radiusROI,indexPointToEdit);
                  }
             }
         }
-    
         function onMouseUp() {
             if(ModeDrawInitialCurve){
                  event=d3.event;
@@ -268,8 +255,8 @@
             }
             if(ModeCurveDeformation){
                 isDeforming=false;
-                accelerationMouse=0;
-                setup.scene.remove(sphereMouse);
+                radiusROI=sizeGrid/2;
+                //setup.scene.remove(sphereMouse);
             }
         }
         
