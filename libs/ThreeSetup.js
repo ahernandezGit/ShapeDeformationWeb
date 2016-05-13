@@ -87,7 +87,9 @@ ThreeSetup.prototype.render = function() {
                         else{
                             whatpoint=a;
                         }
+                        canvaswindows.style('cursor','pointer');
                         flagIntersectionCurve=true;
+                        
                         break;
                     }
                     else if(b==FixedVertex[j]){
@@ -120,6 +122,7 @@ ThreeSetup.prototype.render = function() {
                         else{
                             whatpoint=b;
                         }
+                        canvaswindows.style('cursor','pointer');
                         flagIntersectionCurve=true;
                         break;    
                     }
@@ -153,6 +156,7 @@ ThreeSetup.prototype.render = function() {
                         else{
                             whatpoint=c;
                         }
+                        canvaswindows.style('cursor','pointer');
                         flagIntersectionCurve=true;
                         break;    
                     }
@@ -165,29 +169,38 @@ ThreeSetup.prototype.render = function() {
         }
         
         if(flagIntersectionCurve){
-            ListOfCurvesObject[whatcurve].material.color.set(0xDF7401);
-            pointGeometry.vertices.push(hemesh.positions[whatpoint]);
-            //pointGeometry.vertices.push(intersect.object.geometry.vertices[p2]);
-            var pointmaterial = new THREE.PointsMaterial( {color: 0x27B327, size: 10.0, sizeAttenuation: false, alphaTest: 0.5 } );
+            if(!isDeforming){
+                ListOfCurvesObject[whatcurve].material.color.set(0xDF7401);
+                pointGeometry.vertices.push(hemesh.positions[whatpoint]);
+                //pointGeometry.vertices.push(intersect.object.geometry.vertices[p2]);
+                var pointmaterial = new THREE.PointsMaterial( {color: 0x27B327, size: 10.0, sizeAttenuation: false, alphaTest: 0.5 } );
 
-            var particlesC=setup.scene.getObjectByName("intersectPoints"); 
-            if(particlesC!=undefined){
-                setup.scene.remove( particlesC );
+                var particlesC=setup.scene.getObjectByName("intersectPoints"); 
+                if(particlesC!=undefined){
+                    setup.scene.remove( particlesC );
+                }
+
+                particlesC = new THREE.Points( pointGeometry, pointmaterial );
+                particlesC.name="intersectPoints";
+                setup.scene.add( particlesC );
+                indexPointToEdit=whatpoint;
+                indexCurvetoEdit=whatcurve;
             }
-
-            particlesC = new THREE.Points( pointGeometry, pointmaterial );
-            particlesC.name="intersectPoints";
-            setup.scene.add( particlesC );
-            indexPointToEdit=whatpoint;
+            
         }
         else{
-            //ListOfCurvesObject[whatcurve].material.color.set(0x0015FF);
-            var particlesC=setup.scene.getObjectByName("intersectPoints"); 
-            ListOfCurvesObject[0].material.color.set(0x0015FF);
-            if(particlesC!= undefined){
-                setup.scene.remove( particlesC );
-            }
-            indexPointToEdit=-1;
+            if(!isDeforming){
+                //ListOfCurvesObject[whatcurve].material.color.set(0x0015FF);
+                canvaswindows.style('cursor','default');
+                var particlesC=setup.scene.getObjectByName("intersectPoints"); 
+                ListOfCurvesObject[0].material.color.set(0x0015FF);
+                if(particlesC!= undefined){
+                    setup.scene.remove( particlesC );
+                }
+
+                    indexPointToEdit=-1;
+                    indexCurvetoEdit=-1;
+                }
         }
     }
     this.controls.update();

@@ -426,9 +426,7 @@ function IterationUpdateVector(lapla,etaarray){
         labx.exec("vx= mulMatrixVector(invATA,mulspMatrixVector(AT,bx))");	
         laby.exec("vy= mulMatrixVector(invATA,mulspMatrixVector(AT,by))");	
         labz.exec("vz= mulMatrixVector(invATA,mulspMatrixVector(AT,bz))");	
-        flaglabx=false;
-        flaglaby=false;
-        flaglabz=false;
+       
         /*var gn=GridMeshVertexArray.length; 
         var pr=pointSample.length;
         var interiorpoints=gn-pr;
@@ -492,10 +490,10 @@ function IterationUpdateVector(lapla,etaarray){
         labx.exec("vx=spcgnr(spA,bx)");	
         laby.exec("vy=spcgnr(spA,by)");	
         labz.exec("vz=spcgnr(spA,bz)");
-        flaglabx=false;
-        flaglaby=false;
-        flaglabz=false;
     }
+    flaglabx=false;
+    flaglaby=false;
+    flaglabz=false;
     labx.getObject("vx", function ( result ) { // recover the value of a variable from the lab
           for (var i=0;i<n;i++){
               hemesh.positions[i].setX(result[i]);
