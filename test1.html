@@ -143,7 +143,9 @@
         //index in a LineSample curve
         var indexPointToEdit=-1;
         var indexCurvetoEdit=-1;
+        var indexPointEditInFixedVertex=-1;
         //var accelerationMouse=0;
+        var submesh={};
         var plane=new planeToDeforming(setup.camera.getWorldDirection(),0,0,0);
         function mousePosition2D(event){
               var mouse=new THREE.Vector2();
@@ -190,6 +192,7 @@
                 //mouse.set(newpos.x,newpos.y);
                 CurrentPoint=mousePosition3D(event);
                 if(!isDeforming) return;
+                //console.log(submesh);
                 submesh.updateROIradius();
                 //mouseLast2D.set(mouseCurrent2D.x,mouseCurrent2D.y);
                 //LastPoint=CurrentPoint;
@@ -221,7 +224,8 @@
                      plane=new planeToDeforming(setup.camera.getWorldDirection(),pointToEdit.x,pointToEdit.y,pointToEdit.z,indexPointToEdit);
                     
                      //setup.scene.add(sphereMouse);
-                     submesh= new pathToEdit(radiusROI,indexPointToEdit);
+                     submesh= new pathToEdit(radiusROI,indexPointToEdit,indexCurvetoEdit,indexPointEditInFixedVertex);
+                     console.log(submesh);
                  }
             }
         }
@@ -256,7 +260,11 @@
             if(ModeCurveDeformation){
                 isDeforming=false;
                 radiusROI=sizeGrid/2;
-                //setup.scene.remove(sphereMouse);
+                //var meshROI=setup.scene.getObjectByName("meshROI");
+                //var particlepar=setup.scene.getObjectByName("pruebapar");
+                //setup.scene.remove(meshROI);
+                //setup.scene.remove(particlepar);
+                //meshROI={};
             }
         }
         
