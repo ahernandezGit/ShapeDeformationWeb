@@ -150,7 +150,7 @@ Hemesh.prototype.addFace = function(vertices) {
                 edge.vertices.push(this.positions[vertices[vertices.length-1]]);
                 var lines = new THREE.Line(edge,materialBoundary);
                 setup.scene.add(lines);
-                console.log("haledge ",h);
+                console.log("halfedge ",h);
                 //console.log("v1 ",v1);
                 //console.log("v2 ",v2);  
                 return HEMESH_INVALID_IDX;
@@ -345,6 +345,7 @@ Hemesh.prototype.vertexValence= function(v) {
     var s=0;	
     var h=this.vertexHalfedge(v);
     var hs=h;
+    var finish=false;
     //var geometryedge = new THREE.Geometry();
     //var geometryobject = new THREE.Object3D();
     //var material = new THREE.LineBasicMaterial( { color: 0x27B327, linewidth: 2 } );
@@ -367,10 +368,15 @@ Hemesh.prototype.vertexValence= function(v) {
         else{break;}
         
 	} while(h !== hs);
-    if(h<0){
+    if(h<0){//neighborhood is not cyclic  
         s=0;
         h=this.vertexHalfedge(v);
-        hs=h;
+        //getting most left half edge
+        do{
+            hs=h;
+            h = this.halfedgeSinkCCW(h);
+        }while(h>-1);
+        h=hs;
         /*var geometryedge = new THREE.Geometry();
         var geometryobject1 = new THREE.Object3D();
         if(this.halfedgeValid(this.halfedgeOpposite[h])){
@@ -442,7 +448,12 @@ Hemesh.prototype.halfedgeOpposite = function(h) {
 }
 
 Hemesh.prototype.halfedgeVertex = function(h) {
-	return this.halfedgeAdjacency[h].vertex;
+    if(h>-1){
+	   return this.halfedgeAdjacency[h].vertex;
+    }
+    else{
+       console.log("problem halfedge ",h);
+    }
 }
 
 Hemesh.prototype.setHalfedgeVertex = function(h, v) {
@@ -497,7 +508,7 @@ Hemesh.prototype.halfedgeSinkCCW = function(h) {
 	return this.halfedgePrev(this.halfedgeOpposite(h));
 }
 
-Hemesh.prototype.findHalfedge = function(v1, v2, dbg) {
+Hemesh.prototype.findHalfedge= function(v1, v2, dbg) {
 	var h1 = this.vertexHalfedge(v1);
 	var h2 = this.vertexHalfedge(v2);
 	
@@ -519,7 +530,7 @@ Hemesh.prototype.findHalfedge = function(v1, v2, dbg) {
 }
 Hemesh.prototype.vertexCirculator = function (f, he) {
 	var start = he;
-	var vtx = this.halfedgeVertex(he);
+	//var vtx = this.halfedgeVertex(he);
 	var max = 20; // A failsafe for corrupt hds
 	while (true) {
 		if (f(he) != undefined) break;
@@ -528,124 +539,75 @@ Hemesh.prototype.vertexCirculator = function (f, he) {
 		if (max--== 0) throw "Corrupt hds in vertex circulation";
 	}
 }
-/***************
-	Differential forms operations
-*/
-Hemesh.prototype.hodgeStar0Form = function() {
-	var star0 = [[],[],[]];
-	for(var v=0; v < this.vertexAdjacency.length; ++v) {
-		if(this.halfedgeValid(this.vertexHalfedge(v))) {
-			star0[0].push(v);
-			star0[1].push(v);
-			star0[2].push(this.vertexDualArea(v));
-		}
+Hemesh.prototype.vertexCirculatorCW = function (f, he) {
+	var start = he;
+	//var vtx = this.halfedgeVertex(he);
+	var max = 20; // A failsafe for corrupt hds
+	while (true) {
+		if (f(he) != undefined) break;
+		he = this.halfedgeSinkCW(he);
+		if (he === start) break;
+		if (max--== 0) throw "Corrupt hds in vertex circulation";
 	}
-	return numeric.ccsScatter(star0);
 }
-
-Hemesh.prototype.hodgeStarInverse0Form = function() {
-	var star0 = [[],[],[]];
-	for(var v=0; v < this.vertexAdjacency.length; ++v) {
-		if(this.halfedgeValid(this.vertexHalfedge(v))) {
-			star0[0].push(v);
-			star0[1].push(v);
-			star0[2].push(1/this.vertexDualArea(v));
-		}
+Hemesh.prototype.vertexCirculatorPartial = function (f, he) {
+	var start = he;
+	//var vtx = this.halfedgeVertex(he);
+	var max = 20; // A failsafe for corrupt hds
+    var hs=-1;
+    var finish=false;
+    var table=[he];
+	while (true) {
+		if (f(he) != undefined) break;
+        hs=he;
+		he = this.halfedgeSinkCW(he);
+        table.push(he);
+		if (he === start){
+            finish=true;
+            break;  
+        } 
+        if (he<0) break;
+		if (max--== 0){
+              console.log(hs);
+              console.log(he);            
+              throw "Corrupt hds in vertex circulation non negative";  
+        } 
 	}
-	return numeric.ccsScatter(star0);
+    //console.log("non negative ", table);
+    if(he<0 && !finish){
+        he=hs;
+        table=[he];
+        max=20;
+        while (true) {
+            if (f(he) != undefined) break;
+            he = this.halfedgeSinkCCW(he);
+            table.push(he);
+            if (he<0 || he==hs) break;
+            if (max--== 0){
+              console.log(hs);
+              console.log(he);    
+              console.log("negative ", table);
+              throw "Corrupt hds in vertex circulation negative";  
+            } 
+	    }
+        
+    }
+    
 }
-
-Hemesh.prototype.hodgeStar1Form = function() {
-	var star1 = [[],[],[]];
-	var n = this.halfedgeAdjacency.length/2;
-	
-	for(var h=0; h < n*2; h += 2) {
-		if(this.faceValid(this.halfedgeFace(h))) {
-			var ho = h+1;
-			var cotAlpha = this.halfedgeCotan(h);
-			var cotBeta = this.halfedgeCotan(ho);
-			
-			star1[0].push(h/2);
-			star1[1].push(h/2);
-			star1[2].push((cotAlpha + cotBeta)*0.5);
-		}
-	}
-	return numeric.ccsScatter(star1);
-}
-
-Hemesh.prototype.hodgeStarInverse1Form = function() {
-	var star1 = [[],[],[]];
-	var n = this.halfedgeAdjacency.length/2;
-	
-	for(var h=0; h < n*2; h += 2) {
-		if(this.faceValid(this.halfedgeFace(h))) {
-			var ho = h+1;
-			var cotAlpha = this.halfedgeCotan(h);
-			var cotBeta = this.halfedgeCotan(ho);
-			
-			star1[0].push(h/2);
-			star1[1].push(h/2);
-			star1[2].push(1/((cotAlpha + cotBeta)*0.5));
-		}
-	}
-	return numeric.ccsScatter(star1);
-}
-
-Hemesh.prototype.exteriorDerivative0Form = function() {
-	var d0 = [[],[],[]];
-	var nV = this.vertexAdjacency.length;
-	var nE = this.halfedgeAdjacency.length/2;
-	
-	for(var h=0; h < nE*2; h += 2) {
-		var v1 = this.halfedgeVertex(h);
-		var v2 = this.halfedgeSource(h);
-		
-		d0[0].push(h/2);
-		d0[1].push(v1);
-		d0[2].push(1);
-		
-		d0[0].push(h/2);
-		d0[1].push(v2);
-		d0[2].push(-1);
-	}
-	return numeric.ccsScatter(d0);
-}
-
-
-function printMatrix(M) {
-	for(var i=0; i < M.length; ++i) {
-		console.log(M[i]);
+Hemesh.prototype.vertexCirculatorIJ= function (f,i,v,j) {
+	var start = this.findHalfedge(i,v);
+    start=this.halfedgeSinkCW(start);
+	//var vtx = this.halfedgeVertex(he);
+	var max = 20; // A failsafe for corrupt hds
+	while (true) {
+		if (f(v) != undefined) break;
+        var vtx=this.halfedgeSourceCW(start);
+		if (vtx === j) break;
+        start = this.halfedgeSinkCW(start);
+		if (max--== 0) throw "Corrupt hds in vertex circulation";
 	}
 }
 
-Hemesh.prototype.laplacian = function() {
-	var d0 = this.exteriorDerivative0Form();
-	var d0T = numeric.ccsTranspose(d0);
-	var star1 = this.hodgeStar1Form();
-	return numeric.ccsDot(numeric.ccsDot(d0T, star1), d0);
-}
-
-Hemesh.prototype.positionMatrix = function() {
-	var P = Array(this.vertexAdjacency.length);
-	for(var v=0; v < this.vertexAdjacency.length; ++v) {
-		var p = this.positions[v];
-		P[v] = [p.x, p.y, p.z];
-	}
-	return P;
-}
-
-Hemesh.prototype.dualVertexMatrix = function() {
-	var star0 = this.hodgeStar0Form();
-	var pos = this.positionMatrix();
-	return numeric.dot(numeric.ccsFull(star0), pos);
-}
-
-Hemesh.prototype.meanCurvatureNormals = function(L) {
-	var star0 = this.hodgeStarInverse0Form();
-	var P = this.positionMatrix();
-	var M = numeric.ccsDot(star0, L);
-	return numeric.mul(numeric.dot(numeric.ccsFull(M), P), 0.5);
-}
 
 /***************
 	Mesh-level operations
@@ -780,17 +742,16 @@ Hemesh.prototype.toOBJ = function() {
 
 Hemesh.prototype.toGeometry = function() {
 	var geometry = new THREE.Geometry();
-	geometry.vertices = hemesh.positions;
-	hemesh=this;
-	for(var f=0; f < hemesh.faceAdjacency.length; ++f) {
-		var h = hemesh.faceHalfedge(f);
-		if(hemesh.halfedgeValid(h)) {
+	geometry.vertices = this.positions;
+	for(var f=0; f < this.faceAdjacency.length; ++f) {
+		var h = this.faceHalfedge(f);
+		if(this.halfedgeValid(h)) {
 			var hs = h;
 			var ff = [];
 			do {
-				var v = hemesh.halfedgeVertex(h);
+				var v = this.halfedgeVertex(h);
 				ff.push(v);
-				h = hemesh.halfedgeNext(h);
+				h = this.halfedgeNext(h);
 			} while(h != hs);
 			
 			geometry.faces.push(new THREE.Face3(ff[0], ff[1], ff[2]));
