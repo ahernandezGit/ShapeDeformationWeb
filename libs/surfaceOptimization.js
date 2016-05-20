@@ -79,15 +79,8 @@ function FirstCurvaturesCurve2(){
 
 //Laplacian for all vertex vertex
 function uniformLaplacian(){
-    /*if(!FirstMesh){
-        var n=hemesh.positions.length;
-    }
-    else{
-        var n=GridMeshVertexArray.length;    
-    }*/
     var n=hemesh.positions.length;
     var L=zeros(n,n);
-    var result=[];
     for(var i=0;i<n;i++){
         //result.push(hemesh.vertexValence(i));
         L.val[i*L.n+i]=1.0;    

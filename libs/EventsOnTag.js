@@ -74,7 +74,8 @@ function createInicialMesh() {
         color:  0xd9d9d9,
         polygonOffset: true,
         polygonOffsetFactor: 1,
-        side:  THREE.DoubleSide,   
+        side:  THREE.DoubleSide, 
+        vertexColors: THREE.FaceColors,
         polygonOffsetUnits: 0.1
     }));
  
@@ -113,7 +114,9 @@ function createInicialMesh() {
     setup.scene.remove(LineSample);
     setup.scene.add(ListOfCurvesObject[0]);
     setup.scene.add(mesh,wireframe);
-     
+    GridMeshVertexArray=[];
+    GridMeshFacesArray=[];
+    TableHashIndextoPosition=[];
 }
 function OtherMouseControls() {
      points=[];
@@ -306,6 +309,8 @@ d3.select("#radioFibermesh").on("click",function(){
        fixBoundaryPoints(); 
        createInicialMesh();
        inflationFunction3();    
+       ModeDrawInitialCurve=false;
+       ModeFibermesh=true;
        OtherMouseControls();    
    } 
    //setTimeout(cancelAnimation,1000);     

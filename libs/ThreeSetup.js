@@ -49,12 +49,12 @@ ThreeSetup.prototype.render = function() {
         var pointGeometry = new THREE.Geometry();
         var whatcurve=-1;
         var whatpoint=-1;
+        var whatindex=-1;
         if ( intersects.length > 0 ) {
             var intersect = intersects[0];
             var a=intersect.face.a;
             var b=intersect.face.b;
             var c=intersect.face.c;
-           
             for(var i=0;i<ListOfCurves.length;i++){
                 for(var j=ListOfCurves[i][0];j<=ListOfCurves[i][1];j++){
                     if(a==FixedVertex[j]){
@@ -79,13 +79,17 @@ ThreeSetup.prototype.render = function() {
                             var dother=hemesh.positions[other].distanceTo(intersect.point);
                             if(da<dother){
                               whatpoint=a;   
+                              whatindex=j;    
                             }
                             else{
                                 whatpoint=other;
+                                if(other==FixedVertex[j1]){whatindex=j1;}
+                                else{whatindex=jm1;}
                             }
                         }
                         else{
                             whatpoint=a;
+                            whatindex=j; 
                         }
                         canvaswindows.style('cursor','pointer');
                         flagIntersectionCurve=true;
@@ -114,13 +118,17 @@ ThreeSetup.prototype.render = function() {
                             var dother=hemesh.positions[other].distanceTo(intersect.point);
                             if(db<dother){
                               whatpoint=b;   
+                              whatindex=j;  
                             }
                             else{
                                 whatpoint=other;
+                                if(other==FixedVertex[j1]){whatindex=j1;}
+                                else{whatindex=jm1;}
                             }
                         }
                         else{
                             whatpoint=b;
+                            whatindex=j; 
                         }
                         canvaswindows.style('cursor','pointer');
                         flagIntersectionCurve=true;
@@ -148,13 +156,17 @@ ThreeSetup.prototype.render = function() {
                             var dother=hemesh.positions[other].distanceTo(intersect.point);
                             if(dc<dother){
                               whatpoint=c;   
+                              whatindex=j; 
                             }
                             else{
                                 whatpoint=other;
+                                if(other==FixedVertex[j1]){whatindex=j1;}
+                                else{whatindex=jm1;}
                             }
                         }
                         else{
                             whatpoint=c;
+                            whatindex=j; 
                         }
                         canvaswindows.style('cursor','pointer');
                         flagIntersectionCurve=true;
@@ -185,6 +197,7 @@ ThreeSetup.prototype.render = function() {
                 setup.scene.add( particlesC );
                 indexPointToEdit=whatpoint;
                 indexCurvetoEdit=whatcurve;
+                indexPointEditInFixedVertex=whatindex;
             }
             
         }
@@ -200,7 +213,8 @@ ThreeSetup.prototype.render = function() {
 
                     indexPointToEdit=-1;
                     indexCurvetoEdit=-1;
-                }
+                    indexPointEditInFixedVertex=-1;
+            }
         }
     }
     this.controls.update();
