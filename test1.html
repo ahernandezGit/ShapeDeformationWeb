@@ -18,6 +18,9 @@
             border: 1px black solid;
             padding-left: 5px;
         }
+        .binput{
+            display: block;
+        }
 	</style>
     
 	<script src="libs/three.js"></script>
@@ -36,6 +39,7 @@
       <script src="http://mlweb.loria.fr/lalolibworker.js"></script>
      <script src="libs/numeric-1.2.6.js"></script>
       -->
+    <script src="libs/CurveDeformation.js"></script>     
     <script  type="application/x-javascript" src="libs/lalolib/lalolib.js"></script>
     <script src="libs/d3.min.js"></script>
     <script src="libs/doubly-linked-list.js"></script>    
@@ -43,14 +47,15 @@
 	</head>
 	<body>
         <div class="overcanvas"><br>
-        <label>Size of the Grid <input id="sizeGridBar" type="range" value="0.1" min="0.05" max="0.5" step="0.01" onchange="updateSizeGrid(this.value)"></label><br/>
+        <label>Size of the Grid <input id="sizeGridBar" type="range" value="1" min="0.5" max="5" step="0.1" onchange="updateSizeGrid(this.value)"></label><br/>
         <label id="valueexample"> </label><br>
         <label><input type="checkbox" id="checkWireframe">Wireframe </label><br/><br/>
-             
+         
         <input type="radio" name="gender" id="radioSBS" checked> Step by step <br/>
         <div id="buttonsSBS" class="stepbystep">
             <p>
             <label><input type="checkbox" id="checkGrid">Grid</label><br/>        
+            <label><input type="checkbox" id="checkMesh">Mesh </label><br/>     
             <button id="opButton">Optimize Boundary </button>
             <button id="fixButton"> Fix Boundary </button>       
             <button id="inflationButton">Inflation </button>
@@ -59,10 +64,20 @@
             <button id="drawButton">Draw</button>    
             <button id="clearButton">Clear </button>
             <button id="finishButton">Finish</button>    
+            <button id="uploadButton">Upload</button>
+            <button id="exportButton">Export</button>
+            <input type="file" id="fileToLoad" >
             </p>
         </div>
         <input type="radio" name="gender" id="radioFibermesh"> Fibermesh mode <br/>  
-     
+        <div id="buttonsFiber" class="stepbystep">
+            <p>
+            <button id="cdButton">EditCurve</button>
+            <button id="cdButton">AddCurve</button>    
+            <button id="changeButton">ChangeType</button>
+            <button id="startButton">Start</button>
+            </p>
+        </div>
         </div>
 	<script>
         var requestIdAnimation;
@@ -74,18 +89,19 @@
         var isDrawing=false;
         var LastPoint,CurrentPoint;
         var sizeGrid=document.getElementById("sizeGridBar").value;
-        console.log(sizeGrid);
         var LineSample = new THREE.Object3D();
         var LineStroke = new THREE.Object3D();
         var gridgeometry = new THREE.Object3D();
         var checkGrid=document.getElementById("checkGrid");
+        var checkMesh=document.getElementById("checkMesh");
+        
         gridgeometry.name="Grid2D";
         LineSample.name="LineSample";
         materialReal = new THREE.LineBasicMaterial( { color: 0xff0000, linewidth: 2 } );
         materialSample = new THREE.LineBasicMaterial( { color: 0x0015FF, linewidth: 2 } );
         materialGrid2D = new THREE.LineBasicMaterial( { color: 0xff2222, linewidth: 1 } );
         materialBoundaryGrid = new THREE.LineBasicMaterial( { color: 0x27B327, linewidth: 2 });
-        
+        var raycasterCurve = new THREE.Raycaster();
         var width,height,starx,stary;   
         var points = [ ], pointSample = [ ];
         //array of grid points
@@ -107,6 +123,36 @@
         // mode of the application
         var mode="sbs";
         
+         //Manage the distints modes of draw and manipulation 
+        var ModeDrawInitialCurve=true;
+        var ModeFibermesh=false;
+        var ModeCurveDeformation=false;
+        var ModeDebug=false;
+        
+        
+        // index in hemesh of  points to edit (ROI)
+        var IndexPointToEdit=[];
+        var flagIntersectionCurve=false;
+        var isDeforming=false;
+        var mouseLast2D=new THREE.Vector2();
+        var mouseCurrent2D=new THREE.Vector2();
+        //var sphereMouseGeometry = new THREE.SphereGeometry(sizeGrid/2, 20, 20, 0, Math.PI * 2, 0, Math.PI * 2);
+        //var sphereMaterial = new THREE.MeshBasicMaterial( {color: 0xffff00,transparent: true, opacity:0.5} );
+        //var sphereMouse = new THREE.Mesh(sphereMouseGeometry, sphereMaterial);
+        var radiusROI=sizeGrid/2;
+        //index in a LineSample curve
+        var indexPointToEdit=-1;
+        var indexCurvetoEdit=-1;
+        var indexPointEditInFixedVertex=-1;
+        //var accelerationMouse=0;
+        var submesh={};
+        var plane=new planeToDeforming(setup.camera.getWorldDirection(),0,0,0);
+        function mousePosition2D(event){
+              var mouse=new THREE.Vector2();
+              mouse.x = ( event.clientX / window.innerWidth ) * 2 - 1;
+              mouse.y = - ( event.clientY / window.innerHeight ) * 2 + 1;		
+              return mouse;
+        }
         function mousePosition3D(event){
             // calculate mouse position in normalized device coordinates
             // (-1 to +1) for both components
@@ -128,50 +174,113 @@
         }
         function onMouseMove() {
             event=d3.event;
-            if (!isDrawing) return;
-            CurrentPoint=mousePosition3D(event);
-            points.push(CurrentPoint);
-            //console.log(points);
-            var geometryLine = new THREE.Geometry();
-            geometryLine.vertices.push(LastPoint,CurrentPoint);
-            LastPoint=CurrentPoint;
-            var line = new THREE.Line( geometryLine, materialReal );
-            LineStroke.add(line);
-            //setup.scene.add( line );
+            if(ModeDrawInitialCurve){
+                if (!isDrawing) return;
+                CurrentPoint=mousePosition3D(event);
+                points.push(CurrentPoint);
+                //console.log(points);
+                var geometryLine = new THREE.Geometry();
+                geometryLine.vertices.push(LastPoint,CurrentPoint);
+                LastPoint=CurrentPoint;
+                var line = new THREE.Line( geometryLine, materialReal );
+                LineStroke.add(line);
+                //setup.scene.add( line );
+            }
+            if(ModeCurveDeformation){
+                //var newpos=mousePosition2D(event);
+                //mouseCurrent2D.set(event.clientX,event.clientY);
+                //mouse.set(newpos.x,newpos.y);
+                CurrentPoint=mousePosition3D(event);
+                if(!isDeforming) return;
+                //console.log(submesh);
+                submesh.updateROIradius();
+                //mouseLast2D.set(mouseCurrent2D.x,mouseCurrent2D.y);
+                //LastPoint=CurrentPoint;
+            }
         }
-        function onMouseDown () {
-            clearScene();
+        function onMouseDown(){
             event=d3.event;
-            isDrawing = true;
-            setup.scene.add(LineStroke);
-            LastPoint=mousePosition3D(event);
-            points.push(LastPoint);  
-            //render();
+            if(ModeDrawInitialCurve){
+                clearScene();
+                isDrawing = true;
+                setup.scene.add(LineStroke);
+                LastPoint=mousePosition3D(event);
+                points.push(LastPoint);  
+                //render();
+            } 
+           if(ModeCurveDeformation){
+                 if(flagIntersectionCurve){
+                     isDeforming=true;
+                     LastPoint=mousePosition3D(event);
+                     //var newpos=mousePosition2D(event);
+                     //mouseLast2D.set(event.clientX,event.clientY);
+                     //mouse.set(newpos.x,newpos.y);
+                     //updateROI();
+                     //sphereMouse.scale.set(4,4,4);
+                     var pointToEdit=hemesh.positions[indexPointToEdit];
+                     //console.log(indexPointToEdit);
+                     
+                     //computing parallel plane where translate the vector
+                     plane=new planeToDeforming(setup.camera.getWorldDirection(),pointToEdit.x,pointToEdit.y,pointToEdit.z,indexPointToEdit);
+                    
+                     //setup.scene.add(sphereMouse);
+                     submesh= new pathToEdit(radiusROI,indexPointToEdit,indexCurvetoEdit,indexPointEditInFixedVertex);
+                     //submesh.updateRender();
+                     console.log(submesh);
+                 }
+            }
         }
-    
-        function onMouseUp () {
-             event=d3.event;
-             isDrawing = false;
-             //console.log(points);
-             Resample(points);
-             setup.scene.remove( LineStroke );
-             createGrid();
-             drawGrid(true);
-             GrowingFeed();
-             ptd=MappingVerteToStroke2();
-             console.log(ptd);
-             drawAssociated();  
-             if(mode=="fiber"){
-               fixBoundaryPoints();    
-               inflationFuntion3();
-               OtherMouseControls();     
-             }
-             else{
-               drawBoundary(gridBoundary);
-               cancelRender=false;
-               render();    
-             }
-             
+        function onMouseUp() {
+            if(ModeDrawInitialCurve){
+                 event=d3.event;
+                 isDrawing = false;
+                 //console.log(points);
+                 Resample(points);
+                 setup.scene.remove( LineStroke );
+                 createGrid();
+                 drawGrid(true);
+                 GrowingFeed();
+                 ptd=MappingVerteToStroke2();
+                 console.log(ptd);
+                 drawAssociated();  
+                 if(mode=="fiber"){
+
+                   fixBoundaryPoints(); 
+                   createInicialMesh();     
+                   inflationFunction3();
+                   ModeDrawInitialCurve=false;
+                   ModeFibermesh=true;
+                   OtherMouseControls();     
+                 }
+                 else{
+                   drawBoundary(gridBoundary);
+                   for(i=GridMeshVertexArray.length-pointSample.length;i<GridMeshVertexArray.length;i++){
+                       FixedVertex.push(i);
+                   }
+                   ListOfCurves.push([0,FixedVertex.length-1]);
+                   cancelRender=false;
+                   render();    
+                 }
+            }
+            if(ModeCurveDeformation){
+                isDeforming=false;
+                radiusROI=sizeGrid/2;
+                var wireframeLines = hemesh.toWireframeGeometry();
+        var wireframe = new THREE.LineSegments(wireframeLines, new THREE.LineBasicMaterial({
+            color: 0xff2222,
+            opacity: 0.2,
+            transparent: true,
+        }));
+                wireframe.name="wireframe";
+        setup.scene.add(wireframe);
+                startButtonF();
+                
+                //var meshROI=setup.scene.getObjectByName("meshROI");
+                //var particlepar=setup.scene.getObjectByName("pruebapar");
+                //setup.scene.remove(meshROI);
+                //setup.scene.remove(particlepar);
+                //meshROI={};
+            }
         }
         
         function clearScene(){
@@ -195,6 +304,10 @@
               GridMeshFacesArray=[];
               TableHashIndextoPosition=[];
               cancelRender=false;
+              ModeFibermesh=false;
+              ModeCurveDeformation=false;
+              ModeDrawInitialCurve=true;
+              //FirstMesh=true;
               render();
          }
         
