@@ -7906,7 +7906,7 @@ should return [ 817.7597, 2.4750, 0.0030]
 		}
 		else
 			UBV =  bidiagonalize( A, true );
-		console.log(UBV);
+		//console.log(UBV);
 		if ( computeU ) {
 			if ( thinU )
 				var U = getRows(UBV.U, range(0,n));//Utrans
