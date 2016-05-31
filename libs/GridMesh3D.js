@@ -40,6 +40,7 @@ function createMesh2(){
     var r=pointSample.length;
     var n=gridBoundary.length;
     var interiorPointsNumber=GridMeshVertexArray.length-r;
+    console.log(interiorPointsNumber);
     var totalPoints=GridMeshVertexArray.length;
     var vtx=toThreeVector3(GridMeshVertexArray.slice()); 
     var vtx2=[];
@@ -63,10 +64,29 @@ function createMesh2(){
         }
         fac.push(current);
     }
-    for(i=totalPoints-1;i>=interiorPointsNumber;i=i-1){
-        FixedVertex.push(i);
-    }
-    FixedVertex.reverse();
+   
     return [fac,vtx];
 }
 
+function drawMesh(yes){
+    var mesh=setup.scene.getObjectByName("mesh");
+    if(mesh!= undefined){
+        if(yes){
+            mesh.visible=true;
+        }
+        else{
+            mesh.visible=false;
+        }
+    }
+}
+function drawMeshROI(yes){
+    var mesh=setup.scene.getObjectByName("meshROI");
+    if(mesh!= undefined){
+        if(yes){
+            mesh.visible=true;
+        }
+        else{
+            mesh.visible=false;
+        }
+    }
+}

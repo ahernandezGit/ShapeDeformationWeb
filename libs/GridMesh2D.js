@@ -680,11 +680,11 @@ function MappingVerteToStroke2(){
     // http://www.cs.utexas.edu/users/evouga/uploads/4/5/6/8/45689883/notes1.pdf
     //lvertex,vertex and rvertex are three vertex consecutives
     function CurvatureVertex(lvertex,vertex,rvertex){
-        var vl=Victor.fromArray([lvertex.x,lvertex.y]);
-        var vc=Victor.fromArray([vertex.x,vertex.y]);
-        var vr=Victor.fromArray([rvertex.x,rvertex.y]);
-        var v1=vc.subtract(vl);
-        var v2=vr.subtract(vc);
+        var vl=new THREE.Vector2(lvertex.x,lvertex.y);
+        var vc=new THREE.Vector2(vertex.x,vertex.y);
+        var vr=new THREE.Vector2(rvertex.x,rvertex.y);
+        var v1=vc.clone().sub(vl);
+        var v2=vr.clone().sub(vc);
         var mod1=v1.length();
         var mod2=v2.length();
         var angle= Math.acos(v1.dot(v2)/(mod1*mod2));
@@ -741,20 +741,20 @@ function MappingVerteToStroke2(){
                 }   
         }
         
-        var point=Victor.fromArray([vertex.x,vertex.y]);
-        var v0=Victor.fromArray([gridPointsArray[neiborhoodIndex[0]].x,gridPointsArray[neiborhoodIndex[0]].y]);
-        var v1=Victor.fromArray([gridPointsArray[neiborhoodIndex[1]].x,gridPointsArray[neiborhoodIndex[1]].y]);
-        var v2=Victor.fromArray([gridPointsArray[neiborhoodIndex[2]].x,gridPointsArray[neiborhoodIndex[2]].y]);
+        var point=new THREE.Vector2(vertex.x,vertex.y);
+        var v0=new THREE.Vector2(gridPointsArray[neiborhoodIndex[0]].x,gridPointsArray[neiborhoodIndex[0]].y);
+        var v1=new THREE.Vector2(gridPointsArray[neiborhoodIndex[1]].x,gridPointsArray[neiborhoodIndex[1]].y);
+        var v2=new THREE.Vector2(gridPointsArray[neiborhoodIndex[2]].x,gridPointsArray[neiborhoodIndex[2]].y);
         var neiborhood=[v0,v1,v2];
 
        // console.log(neiborhoodIndex);
-        var min=point.distance(v0);
+        var min=point.distanceTo(v0);
         var imin=neiborhoodIndex[0];
         var t=0;
         for(var k=1;k<3;k++){
             var indexB=arrayBoundaryIndex.indexOf(neiborhoodIndex[k]);
             if(indexB!=-1){
-                var d=point.distance(neiborhood[k]);
+                var d=point.distanceTo(neiborhood[k]);
                 if(d<min || t==0 ){
                     min=d;    
                     //imin=neiborhoodIndex[k];
@@ -803,7 +803,30 @@ function MappingVerteToStroke2(){
     for(var j=0;j<n;j++){
         var fi=findNearGridVertex(pointSample[curvatures[j][0]],indexFromBoundary(gridBoundary));
         if(fi!=undefined){
-            gridBoundary[fi].associated.push(curvatures[j][0]);
+            if(gridBoundary[fi].associated.length!=0){
+                if(curvatures[j][0]==0){
+                        if(gridBoundary[fi].associated[gridBoundary[fi].associated.length-1]==1){
+                            gridBoundary[fi].associated.unshift(curvatures[j][0]);
+                        }
+                        else{
+                            gridBoundary[fi].associated.push(curvatures[j][0]);
+                        }
+                }
+                else if(curvatures[j][0]==n-1){
+                     if(gridBoundary[fi].associated[0]==0){
+                            gridBoundary[fi].associated.unshift(curvatures[j][0]);
+                     }
+                    else{
+                            gridBoundary[fi].associated.push(curvatures[j][0]);
+                    }
+                }
+                else{
+                    gridBoundary[fi].associated.push(curvatures[j][0]);        
+                }
+            }
+            else{
+                    gridBoundary[fi].associated.push(curvatures[j][0]);        
+            }
         }
         else{
             PointsToDelete.push(curvatures[j][0]);
@@ -815,13 +838,13 @@ function MappingVerteToStroke2(){
             if(gridBoundary[i].associated.length==0){
                 var a=gridBoundary[(i-1+m)%m].associated;
                 var b=gridBoundary[(i+1)%m].associated;
-                var v0=Victor.fromArray([gridPointsArray[gridBoundary[i].index].x,gridPointsArray[gridBoundary[i].index].y]);
+                var v0=new THREE.Vector2(gridPointsArray[gridBoundary[i].index].x,gridPointsArray[gridBoundary[i].index].y);
                 var da=1000000;
                 var db=1000000;
                 var imin=-1;
                 for(var j=0;j<a.length;j++){
-                     var v1=Victor.fromArray([pointSample[a[j]].x,pointSample[a[j]].y]);
-                     var dist=v1.distance(v0);
+                     var v1=new THREE.Vector2(pointSample[a[j]].x,pointSample[a[j]].y);
+                     var dist=v1.distanceTo(v0);
                      if(dist<da){
                          da=dist;
                          imin=a[j];
@@ -830,8 +853,8 @@ function MappingVerteToStroke2(){
                 //gridBoundary[i].associated.push(imin);
                 db=da;
                 for(var j=0;j<b.length;j++){
-                     var v1=Victor.fromArray([pointSample[b[j]].x,pointSample[b[j]].y]);
-                     var dist=v1.distance(v0);
+                     var v1=new THREE.Vector2(pointSample[b[j]].x,pointSample[b[j]].y);
+                     var dist=v1.distanceTo(v0);
                      if(dist<db){
                          db=dist;
                          imin=b[j];
@@ -840,10 +863,6 @@ function MappingVerteToStroke2(){
                 gridBoundary[i].associated.push(imin);
                 //console.log(gridBoundary[i].associated);
             }
-            else if(gridBoundary[i].associated.indexOf(0)==-1){
-                gridBoundary[i].associated.sort();
-            }
-            
         }
     }
     return PointsToDelete;
@@ -854,11 +873,11 @@ function MappingVerteToStroke(){
     // http://www.cs.utexas.edu/users/evouga/uploads/4/5/6/8/45689883/notes1.pdf
     //lvertex,vertex and rvertex are three vertex consecutives
     function CurvatureVertex(lvertex,vertex,rvertex){
-        var vl=Victor.fromArray([lvertex.x,lvertex.y]);
-        var vc=Victor.fromArray([vertex.x,vertex.y]);
-        var vr=Victor.fromArray([rvertex.x,rvertex.y]);
-        var v1=vc.subtract(vl);
-        var v2=vr.subtract(vc);
+        var vl=new THREE.Vector2(lvertex.x,lvertex.y);
+        var vc=new THREE.Vector2(vertex.x,vertex.y);
+        var vr=new THREE.Vector2(rvertex.x,rvertex.y);
+        var v1=vc.clone().sub(vl);
+        var v2=vr.clone().sub(vc);
         var mod1=v1.length();
         var mod2=v2.length();
         var angle= Math.acos(v1.dot(v2)/(mod1*mod2));
@@ -915,10 +934,10 @@ function MappingVerteToStroke(){
                 }   
         }
         
-        var point=Victor.fromArray([vertex.x,vertex.y]);
-        var v0=Victor.fromArray([gridPointsArray[neiborhoodIndex[0]].x,gridPointsArray[neiborhoodIndex[0]].y]);
-        var v1=Victor.fromArray([gridPointsArray[neiborhoodIndex[1]].x,gridPointsArray[neiborhoodIndex[1]].y]);
-        var v2=Victor.fromArray([gridPointsArray[neiborhoodIndex[2]].x,gridPointsArray[neiborhoodIndex[2]].y]);
+        var point=new THREE.Vector2(vertex.x,vertex.y);
+        var v0=new THREE.Vector2(gridPointsArray[neiborhoodIndex[0]].x,gridPointsArray[neiborhoodIndex[0]].y);
+        var v1=new THREE.Vector2(gridPointsArray[neiborhoodIndex[1]].x,gridPointsArray[neiborhoodIndex[1]].y);
+        var v2=new THREE.Vector2(gridPointsArray[neiborhoodIndex[2]].x,gridPointsArray[neiborhoodIndex[2]].y);
         var neiborhood=[v0,v1,v2];
 
        // console.log(neiborhoodIndex);
@@ -928,7 +947,7 @@ function MappingVerteToStroke(){
         for(var k=1;k<3;k++){
             var indexB=arrayBoundaryIndex.indexOf(neiborhoodIndex[k]);
             if(indexB!=-1){
-                var d=point.distance(neiborhood[k]);
+                var d=point.distanceTo(neiborhood[k]);
                 if(d<min || t==0 ){
                     min=d;    
                     //imin=neiborhoodIndex[k];
@@ -985,12 +1004,12 @@ function MappingVerteToStroke(){
             if(gridBoundary[i].associated.length==0){
                 var a=gridBoundary[(i-1+m)%m].associated;
                 var b=gridBoundary[(i+1)%m].associated;
-                var v0=Victor.fromArray([gridPointsArray[gridBoundary[i].index].x,gridPointsArray[gridBoundary[i].index].y]);
+                var v0=new THREE.Vector2(gridPointsArray[gridBoundary[i].index].x,gridPointsArray[gridBoundary[i].index].y);
                 var d=1000000;
                 var imin=-1;
                 for(var j=0;j<a.length;j++){
-                     var v1=Victor.fromArray([pointSample[a[j]].x,pointSample[a[j]].y]);
-                     var dist=v1.distance(v0);
+                     var v1=new THREE.Vector2(pointSample[a[j]].x,pointSample[a[j]].y);
+                     var dist=v1.distanceTo(v0);
                      if(dist<d){
                          d=dist;
                          imin=a[j];
@@ -999,8 +1018,8 @@ function MappingVerteToStroke(){
                 gridBoundary[i].associated.push(imin);
                 var d=1000000;
                 for(var j=0;j<b.length;j++){
-                     var v1=Victor.fromArray([pointSample[b[j]].x,pointSample[b[j]].y]);
-                     var dist=v1.distance(v0);
+                     var v1=new THREE.Vector2(pointSample[b[j]].x,pointSample[b[j]].y);
+                     var dist=v1.distanceTo(v0);
                      if(dist<d){
                          d=dist;
                          imin=b[j];
@@ -1025,11 +1044,11 @@ function endAssociated(){
         var c=gridBoundary[(i+1)%n].associated[gridBoundary[(i+1)%n].associated.length-1]; 
         var d=gridBoundary[(i+1)%n].associated[0];  
         if(a.indexOf(c)==-1 && a.indexOf(d)==-1) {
-            var v0=Victor.fromArray([gridPointsArray[gridBoundary[i].index].x,gridPointsArray[gridBoundary[i].index].y]);
-            var v1=Victor.fromArray([pointSample[c].x,pointSample[c].y]);
-            var v2=Victor.fromArray([pointSample[d].x,pointSample[d].y]);
-            var d1=v1.distance(v0);
-            var d2=v2.distance(v0);
+            var v0=new THREE.Vector2(gridPointsArray[gridBoundary[i].index].x,gridPointsArray[gridBoundary[i].index].y);
+            var v1=new THREE.Vector2(pointSample[c].x,pointSample[c].y);
+            var v2=new THREE.Vector2(pointSample[d].x,pointSample[d].y);
+            var d1=v1.distanceTo(v0);
+            var d2=v2.distanceTo(v0);
             var b=(d1>d2)?d:c;
             if(Orientation(gridPointsArray[gridBoundary[i].index],pointSample[b],gridPointsArray[gridBoundary[(i+1)%n].index])==-1){
                 gridBoundary[i].associated.push(b);
@@ -1041,11 +1060,11 @@ function endAssociated(){
                 var f=gridBoundary[i].associated[gridBoundary[i].associated.length-1]; 
                 var g=gridBoundary[i].associated[0];  
                 if(e.indexOf(f)==-1 && e.indexOf(g)==-1) {
-                    var v0=Victor.fromArray([gridPointsArray[gridBoundary[(i+1)%n].index].x,gridPointsArray[gridBoundary[(i+1)%n].index].y]);
-                    var v1=Victor.fromArray([pointSample[f].x,pointSample[f].y]);
-                    var v2=Victor.fromArray([pointSample[g].x,pointSample[g].y]);
-                    var dh1=v1.distance(v0);
-                    var dh2=v2.distance(v0);
+                    var v0=new THREE.Vector2(gridPointsArray[gridBoundary[(i+1)%n].index].x,gridPointsArray[gridBoundary[(i+1)%n].index].y);
+                    var v1=new THREE.Vector2(pointSample[f].x,pointSample[f].y);
+                    var v2=new THREE.Vector2(pointSample[g].x,pointSample[g].y);
+                    var dh1=v1.distanceTo(v0);
+                    var dh2=v2.distanceTo(v0);
                     var bo=(dh1>dh2)?g:f;
                     gridBoundary[(i+1)%n].associated.unshift(bo);
                     GridMeshVertexArray.push(new VertexGridmesh(pointSample[bo].x,pointSample[bo].y,0.0,"boundaryPS",bo));
@@ -1080,29 +1099,52 @@ function endAssociated2(){
             return result;
          }
    
-    
+    //var material = new THREE.LineBasicMaterial( { color: 0xAEB404, linewidth: 2 } );
+    //var Bgeometry= new THREE.Object3D();
+    for(var i=0;i<n;i++){
+        if(gridBoundary[i].associated.indexOf(0)==-1){
+            gridBoundary[i].associated=gridBoundary[i].associated.sort();    
+        }
+    }
      for(var i=0;i<n;i++){
+        
         var c=gridBoundary[i].associated[gridBoundary[i].associated.length-1]; 
         var d=gridBoundary[(i+1)%n].associated[0];  
+        
+        /*console.log("iboundary ",i); 
+        console.log("i ",gridI[gridBoundary[i].index]);  
+        console.log("j ",gridBoundary[i].index-(height+1)*gridI[gridBoundary[i].index]);
+        console.log("boundary i+1",gridBoundary[(i+1)%n].associated); */
         if(c!=d) {
-            var v0=Victor.fromArray([gridPointsArray[gridBoundary[i].index].x,gridPointsArray[gridBoundary[i].index].y]);
-            var v00=Victor.fromArray([gridPointsArray[gridBoundary[(i+1)%n].index].x,gridPointsArray[gridBoundary[(i+1)%n].index].y]);
-            var v1=Victor.fromArray([pointSample[c].x,pointSample[c].y]);
-            var v2=Victor.fromArray([pointSample[d].x,pointSample[d].y]);
-            var d1=v1.distance(v00);
-            var d2=v2.distance(v0);
+            var v0=new THREE.Vector2(gridPointsArray[gridBoundary[i].index].x,gridPointsArray[gridBoundary[i].index].y);
+            var v00=new THREE.Vector2(gridPointsArray[gridBoundary[(i+1)%n].index].x,gridPointsArray[gridBoundary[(i+1)%n].index].y);
+            var v1=new THREE.Vector2(pointSample[c].x,pointSample[c].y);
+            var v2=new THREE.Vector2(pointSample[d].x,pointSample[d].y);
+            var d1=v1.distanceTo(v00);
+            var d2=v2.distanceTo(v0);
             var b=(d1>d2)?d:c;
+            
+            //var edge=new THREE.Geometry(); 
+            
             if(d1>d2){
-              gridBoundary[i].associated.push(d);   
+                
+              //gridBoundary[i].associated.push(d);   
+              //edge.vertices.push(gridPointsArray[gridBoundary[i].index],pointSample[d]);    
+              //console.log("iadd",i);    
               //console.log(gridBoundary[i].associated);    
             }
             else{
-              gridBoundary[(i+1)%n].associated.unshift(c);
+              //gridBoundary[(i+1)%n].associated.unshift(c);
+              //edge.vertices.push(gridPointsArray[gridBoundary[(i+1)%n].index],pointSample[c]);
+              //console.log("i+1 add",(i+1)%n);
               //console.log(gridBoundary[(i+1)%n].associated);        
             }
+            //var line = new THREE.Line(edge,material);
+            //Bgeometry.add(line);  
         }
          
     }
+    //setup.scene.add(Bgeometry);
     var associatedSample=[];
     var i0=0;
     for(var i=0;i<n;i++){
@@ -1133,6 +1175,11 @@ function endAssociated2(){
         }
     }
     
+}
+function printGridBoundary(){
+    for(var i=0;i<gridBoundary.length;i++){
+        console.log(gridBoundary[i].associated);
+    }
 }
 function endAssociated3(){
     var n=gridBoundary.length;
@@ -1175,12 +1222,12 @@ function endAssociated3(){
         else{
             var assoGrid=gridBoundary[associatedSample[j][0]].associated;
             if(assoGrid.length==1){
-                var v0=Victor.fromArray([gridPointsArray[gridBoundary[associatedSample[j][0]].index].x,gridPointsArray[gridBoundary[associatedSample[j][0]].index].y]);
-                var v00=Victor.fromArray([gridPointsArray[gridBoundary[associatedSample[(j+1)%r][0]].index].x,gridPointsArray[gridBoundary[associatedSample[(j+1)%r][0]].index].y]);
-                var v1=Victor.fromArray([pointSample[j].x,pointSample[j].y]);
-                var v2=Victor.fromArray([pointSample[(j+1)%r].x,pointSample[(j+1)%r].y]);
-                var d1=v1.distance(v00);
-                var d2=v2.distance(v0);
+                var v0=new THREE.Vector2(gridPointsArray[gridBoundary[associatedSample[j][0]].index].x,gridPointsArray[gridBoundary[associatedSample[j][0]].index].y);
+                var v00=new THREE.Vector2(gridPointsArray[gridBoundary[associatedSample[(j+1)%r][0]].index].x,gridPointsArray[gridBoundary[associatedSample[(j+1)%r][0]].index].y);
+                var v1=new THREE.Vector2(pointSample[j].x,pointSample[j].y);
+                var v2=new THREE.Vector2(pointSample[(j+1)%r].x,pointSample[(j+1)%r].y);
+                var d1=v1.distanceTo(v00);
+                var d2=v2.distanceTo(v0);
                 var next=(j+1)%r;
                 if(d1>d2){
                    if(gridBoundary[associatedSample[j][0]].next=gridBoundary[associatedSample[next][0]].index){    
@@ -1249,6 +1296,7 @@ function drawAssociated(){
      }
 
      setup.scene.add(Bgeometry);   
+     //endAssociated2();
  }
 }
 function OptimizeValence(){

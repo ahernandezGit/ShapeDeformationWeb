@@ -15,14 +15,28 @@ function pathToEdit(r,v,c,ci){
     this.useL0=true;
     this.useL0_R=false;
     this.vxyz_rxyz=[];
-    this.weight=0.1;
+    this.weight=1;
     this.constrainWeight=100;
+    this.flagdifution=false;
     this.olaplacian0=[];
     this.olaplacian1=[];
+    this.original_laplacians_P=[];
+    this.original_laplacians_L1=[];
+    this.IndexVertices=[];
+    this.fixedVertices=[];
+    this.FixedRotation=[];
+    this.EdgeTriplets=[];
     this.R=[];
+    this.edges=[];
     this.radius=r;
     this.fixed=[];
     this.boundary=[];
+    this.finalFixed=[];
+    this.stopGrow=false;
+    this.A=[];
+    this.b=[];
+    this.n_laplacians_P=0;
+    this.n_laplacians_R=0;
     this.handle=v;
     this.whatcurve=c;
     this.indexInCurve=ci;
@@ -32,29 +46,44 @@ function pathToEdit(r,v,c,ci){
     this.geodesiclength=0;
     this.totalfaces=[];
     this.initialPosition=hemesh.positions[v].clone();
-    // flags for render;
-    this.flabx=false;
-    this.flaby=false;
-    this.flabz=false;
+
     this.initializeMesh();
     //console.log(this.boundary);
 }
 pathToEdit.prototype.updateRender=function(){
     if(flaglabx && flaglaby && flaglabz){
+        console.log("todos true");
+        if(this.flagdifution){
+            this.finalFixed=[];
+            for(var i=0;i<this.fixed.length;i++){
+                this.finalFixed.push(this.tableHash[this.fixed[i].toString()]);
+            }
+            this.finalFixed=this.finalFixed.concat(this.IndexVertices);
+            this.updatelaplacians();
+            var sopt=new SurfaceOptimization(this.finalFixed,this.laplacian1,this.meshDS);
+            sopt.FirstMatrixtoProcessCurvatureEdgeLength();
+            var ci=sopt.FisrtIterationCurvaturesProcess();
+            var el=sopt.FisrtIterationEdgeLength();
+            var etaij=sopt.computeEdgeVector(el);
+            var laplacian=sopt.computeIntegratedLaplacian(ci);
+            sopt.IterationUpdateVector(laplacian,etaij);    
+            setTimeout(sopt.updateRenderMesh,500);
+        }
+        //var meshROI=setup.scene.getObjectByName("meshROI");
         var mesh=setup.scene.getObjectByName("mesh");
-
-        var wireframe=setup.scene.getObjectByName("wireframe");
-
+        var wireframeMesh=setup.scene.getObjectByName("wireframeMesh");
+        
+        //meshROI.geometry.verticesNeedUpdate = true;
         mesh.geometry.verticesNeedUpdate = true;
-        ListOfCurvesObject[this.whatcurve].geometry.verticesNeedUpdate = true;
-        setup.scene.remove(wireframe);
-        wireframeLines = hemesh.toWireframeGeometry();
+        ListOfCurvesObject[0].geometry.verticesNeedUpdate = true;
+        setup.scene.remove(wireframeMesh);
+        var wireframeLines = hemesh.toWireframeGeometry();
         var wireframe = new THREE.LineSegments(wireframeLines, new THREE.LineBasicMaterial({
             color: 0xff2222,
             opacity: 0.2,
             transparent: true,
         }));
-        wireframe.name="wireframe";
+        wireframe.name="wireframeMesh";
         setup.scene.add(wireframe);
         cancelRender=false;
         console.log("update render submesh");
@@ -183,7 +212,7 @@ pathToEdit.prototype.updateBoundary=function (){
     //this.totalfaces=this.totalfaces.concat(newfaces);
 }
 pathToEdit.prototype.computeVertex=function (){
-        var le=2.5*this.radius;
+        var le=5*this.radius;
         var vertexs=[];
         var center=hemesh.positions[this.handle];
         var js=this.indexInCurve;
@@ -215,8 +244,8 @@ pathToEdit.prototype.computeVertex=function (){
                 break;
             }   
         }
-        console.log("le",le);
-        console.log(totaldistance);
+        //console.log("le",le);
+        //console.log(totaldistance);
         this.geodesiclength=totaldistance;
         this.js=js;
         this.jp=jp;
@@ -231,7 +260,8 @@ pathToEdit.prototype.computeVertex=function (){
                    var k=1;
                    hemesh.vertexCirculator(function(he){
                        var src=hemesh.halfedgeSource(he);
-                       vertices.push(hemesh.positions[src].clone());
+                       //vertices.push(hemesh.positions[src].clone());
+                       vertices.push(hemesh.positions[src]);
                        faces.push(hemesh.halfedgeFace(he));
                        tableHash[src.toString()]=k;
                        k++;
@@ -252,7 +282,8 @@ pathToEdit.prototype.computeVertex=function (){
                    console.log(this.level);
                    var k=this.meshDS.positions.length;
                    for(var i=0;i<this.boundary.length;i++){
-                       this.meshDS.addVertex(hemesh.positions[this.boundary[i]].clone());
+                       //this.meshDS.addVertex(hemesh.positions[this.boundary[i]].clone());
+                       this.meshDS.addVertex(hemesh.positions[this.boundary[i]]);
                        this.tableHash[this.boundary[i].toString()]=k;
                        k++;
                    }    
@@ -297,8 +328,9 @@ pathToEdit.prototype.computeVertex=function (){
                 particle=new THREE.Points(pointGeometry, pointmaterial);
                 particle.name="pruebapar";
                 setup.scene.add(particle);
-                this.updatelaplacians();
-                this.computeDeforming();
+                //this.updatelaplacians();
+                //this.computeDeforming();
+                if(this.level>1) this.computeDeforming2();
                 //this.updateDeforming();
             }
 }
@@ -317,7 +349,7 @@ pathToEdit.prototype.updateROIradius=function(){
     var t=plane.point.clone().sub(cameraposition).dot(plane.normal)/dir.dot(plane.normal);
     var point=cameraposition.add(dir.multiplyScalar(t));
     this.radius=point.clone().distanceTo(this.initialPosition);
-    hemesh.positions[this.handle].set(point.x,point.y,point.z);
+    this.meshDS.positions[this.tableHash[this.handle.toString()]].set(point.x,point.y,point.z);
     /*var mesh=setup.scene.getObjectByName("mesh");
 
     var wireframe=setup.scene.getObjectByName("wireframe");
@@ -332,7 +364,7 @@ pathToEdit.prototype.updateROIradius=function(){
 }
 pathToEdit.prototype.updatelaplacians=function(){
     var n=this.meshDS.positions.length;
-    var L0=zeros(n-1,n);
+    //var L0=zeros(n-1,n);
     var L1=zeros(n,n);
     var v=zeros(n,3);
     var copy=this.meshDS;
@@ -418,14 +450,14 @@ pathToEdit.prototype.updatelaplacians=function(){
         for(var j=0;j<nl;j++){
             L1.val[i*n+neibor[j]]=-1/nl;    
         }
-        if(i<n-1){
+        /*if(i<n-1){
             L0.val[i*n+i]=-1;
             L0.val[i*n+i+1]=1;
-        }
+        }*/
     }
-    this.laplacian0=sparse(L0);
+    //this.laplacian0=sparse(L0);
     this.laplacian1=sparse(L1);
-    //compute original laplacian with L0
+    /*//compute original laplacian with L0
     for(var i=0;i<n;i++){
         v.val[3*i]=this.meshDS.positions[i].x;
         v.val[3*i+1]=this.meshDS.positions[i].y;
@@ -433,7 +465,7 @@ pathToEdit.prototype.updatelaplacians=function(){
         this.R.push(eye(3));
     }
     this.olaplacian0=mulspMatrixMatrix(this.laplacian0,v);
-    this.olaplacian1=mulspMatrixMatrix(this.laplacian1,v);
+    this.olaplacian1=mulspMatrixMatrix(this.laplacian1,v);*/
 }
 pathToEdit.prototype.crossR=function(rx,ry,rz,R){
     var r=[[1, -rz / 2, ry / 2],[rz / 2, 1, -rx / 2],[-ry / 2, rx / 2, 1]];
@@ -542,8 +574,10 @@ pathToEdit.prototype.updateDeforming=function(){
 pathToEdit.prototype.computeDeforming=function(){
     var n=this.meshDS.positions.length;
     var nl0=this.useL0 ? n-1: n-2;
-    var nl0_R=this.useL0 ? n-1: n-2;
+    var nl0_R=this.useL0_R ? n-1: n-2;
     var nfixed=3;
+    console.log("computing deforming");
+    
     //A and b for compute Rotations . We use L0 for this
     var b=zeros(3*nl0+3*nl0_R+3*nfixed+6);
     var A=zeros(3*nl0+3*nl0_R+3*nfixed+6,3*n+3*n);
@@ -554,22 +588,22 @@ pathToEdit.prototype.computeDeforming=function(){
             A.val[(i * 3 + 0)*A.n + n * 3 + (i + 0) * 3 + 0]=0;
             A.val[(i * 3 + 0)*A.n + n * 3 + (i + 0) * 3 + 1]=-this.olaplacian0.val[3*i+2];
             A.val[(i * 3 + 0)*A.n + n * 3 + (i + 0) * 3 + 2]=this.olaplacian0.val[3*i+1];
-            b[i * 3 + 0] = olaplacian0.val[3*i];
+            b[i * 3 + 0] = this.olaplacian0.val[3*i];
             
             A.val[(i * 3 + 1)*A.n + (i + 0) * 3 + 1]=-1;
             A.val[(i * 3 + 1)*A.n + (i + 1) * 3 + 1]=1;
             A.val[(i * 3 + 1)*A.n + n * 3 + (i + 0) * 3 + 0]=this.olaplacian0.val[3*i+2];
             A.val[(i * 3 + 1)*A.n + n * 3 + (i + 0) * 3 + 1]=0;
             A.val[(i * 3 + 1)*A.n + n * 3 + (i + 0) * 3 + 2]=-this.olaplacian0.val[3*i];
-            b[i * 3 + 1] = olaplacian0.val[3*i+1];
+            b[i * 3 + 1] = this.olaplacian0.val[3*i+1];
             
             A.val[(i * 3 + 2)*A.n + (i + 0) * 3 + 2]=-1;
             A.val[(i * 3 + 2)*A.n + (i + 1) * 3 + 2]=1;
             A.val[(i * 3 + 2)*A.n + n * 3 + (i + 0) * 3 + 0]=-this.olaplacian0.val[3*i+1];
             A.val[(i * 3 + 2)*A.n + n * 3 + (i + 0) * 3 + 1]=this.olaplacian0.val[3*i];
             A.val[(i * 3 + 2)*A.n + n * 3 + (i + 0) * 3 + 2]=0;
-            b[i * 3 + 2] = olaplacian0.val[3*i+2];
-        }solve
+            b[i * 3 + 2] = this.olaplacian0.val[3*i+2];
+        }
     }
     if(!this.useL0_R){
         for(var i = 0; i < nl0_R; i++){
@@ -611,12 +645,24 @@ pathToEdit.prototype.computeDeforming=function(){
     b[nl0*3 + nl0_R*3+ 3*3 + 3]=0;
     b[nl0*3 + nl0_R*3+ 3*3 + 4]=0;
     b[nl0*3 + nl0_R*3+ 3*3 + 5]=0;
+    
     var spA=sparse(A);
-    for(int i = 0; i < 4; i++){
+    console.log("spA and b");
+    console.log(spA);
+    console.log(b);
+    console.log("sparse A ready");
+    console.log("b ready");
+    //var vxyz_rxyz=[];
+    /*
+    for(var i = 0; i < 4; i++){
         //this.vxyz_rxyz = zeros(n * 3 + n * 3);
+        console.log("iter "+i+"of 4");
         this.vxyz_rxyz = spcgnr(spA,b);
+        console.log("vr ",this.vxyz_rxyz);
         this.updateR();
+        console.log("updated R");
         this.updateb(b);
+        console.log("updated b");        
     }
     // update vertex positions
     //Av and b for compute final vertex positions . We use L1 for this
@@ -625,7 +671,7 @@ pathToEdit.prototype.computeDeforming=function(){
     var by=zeros(n+3);
     var bz=zeros(n+3);
     var Av=zeros(n+3,n);
-    var ri = 0;
+    console.log("creating bx by bz av");
     for(var i=0;i<n;i++){
         var l1 = mat([this.olaplacian1[3*i],this.olaplacian1[3*i+1],this.olaplacian1[3*i+2]]);
         var rotated_l1=mulMatrixVector(this.R[i],l1);
@@ -645,7 +691,8 @@ pathToEdit.prototype.computeDeforming=function(){
         by[n+i]=this.constrainWeight*hemesh.positions[indexConstrain[i]].y;
         bz[n+i]=this.constrainWeight*hemesh.positions[indexConstrain[i]].z;
     }
-    var spAv=sparse(A);
+    var spAv=sparse(Av);
+    console.log("sparse bx by bz and av did ");
     var labx = new Lalolab("laloxname",false,"libs/lalolib") ; 
     var laby = new Lalolab("laloyname",false,"libs/lalolib") ; 
     var labz = new Lalolab("lalozname",false,"libs/lalolib") ; 
@@ -662,6 +709,7 @@ pathToEdit.prototype.computeDeforming=function(){
     flaglabx=false;
     flaglaby=false;
     flaglaby=false;
+    console.log("begin labs")    
     labx.getObject("vx", function ( result ) { // recover the value of a variable from the lab
           for (var i=0;i<n;i++){
               copy.positions[i].setX(result[i]);
@@ -689,19 +737,20 @@ pathToEdit.prototype.computeDeforming=function(){
         //console.log(flaglabz);
         labz.close();
     });
-    this.updateRender();
+    this.updateRender();*/
     console.log("update vertex finish");
     
 }
 pathToEdit.prototype.updateR=function(){
-    var n=this.meshDS.positions.length;
+    var n=this.R.length;
     for(var i = 0; i < n; i++){
-        var rx = this.vxyz_rxyz[n * 3 + i * 3 + 0];
-        var ry = this.vxyz_rxyz[n * 3 + i * 3 + 1];
-        var rz = this.vxyz_rxyz[n * 3 + i * 3 + 2];
+        var rx = this.vxyz_rxyz[this.IndexVertices.length * 3 + i * 3 + 0];
+        var ry = this.vxyz_rxyz[this.IndexVertices.length * 3 + i * 3 + 1];
+        var rz = this.vxyz_rxyz[this.IndexVertices.length * 3 + i * 3 + 2];
         this.R[i] = this.crossR(rx, ry, rz, this.R[i]);
         this.R[i] = this.getClosestOrthonormal(this.R[i]);
     }
+    console.log("finist updateR");
 }
 pathToEdit.prototype.updateb=function(b){
     if(this.useL0){
@@ -714,4 +763,274 @@ pathToEdit.prototype.updateb=function(b){
             b[i * 3 + 2] = nb[2];
         }
     }
+}
+pathToEdit.prototype.computeDeforming2= function(){
+    //compute vertex of the curve to deform
+    var n=0;
+    var IndexVertices=[];
+    var _vertices=[];
+    var i=this.jp;
+    while(i!=this.js && n<500){   
+        if(i==ListOfCurves[this.whatcurve][1]+1){
+            i=ListOfCurves[this.whatcurve][0];
+        }
+        IndexVertices.push(this.tableHash[FixedVertex[i].toString()]);
+        _vertices.push(this.meshDS.positions[this.tableHash[FixedVertex[i].toString()]]);
+        n++;
+        i++;
+    }
+    IndexVertices.push(this.tableHash[FixedVertex[this.js].toString()]);
+    _vertices.push(this.meshDS.positions[this.tableHash[FixedVertex[this.js].toString()]]);
+    this.IndexVertices=IndexVertices;
+    n++;
+    console.log(n,IndexVertices.length);
+    //computing edges of the curve to deform (index from _vertices)
+    var edges=[];
+    for(var i=0;i<n-1;i++){
+        edges.push([i,i+1]);
+    }
+    this.edges=edges;
+    //computing fixed vertices (index in IndexVertices)
+    //var fixedVertices=[];
+    this.fixedVertices[0]=0;
+    this.fixedVertices[1]=IndexVertices.length-1;
+    this.fixedVertices[2]=IndexVertices.indexOf(this.tableHash[this.handle.toString()]);
+    //computing fixed edges
+    var FixedEdges=[];
+    FixedEdges[0]=edges[0];
+    FixedEdges[1]=edges[edges.length-1];
+    //Defining one rotation for each edge
+    this.R=[];
+    for(var i=0;i<edges.length;i++){
+        this.R.push(eye(3));
+    }
+    //Defining fixed rotations (index in FixedEdges) 
+    var FixedRotation=[];
+    FixedRotation[0]=0;
+    FixedRotation[0]=edges.length-1;
+    
+    this.FixedRotation=FixedRotation;
+    
+    //computing triplets of vertex for computing uniform laplacian 
+    var VertexTriplets=[];
+    var VertexTripletsIndexR=[];
+    for(var i=0;i<IndexVertices.length-2;i++){
+        VertexTriplets.push([i,i+1,i+2]);
+    }
+    for(var i = 0; i < VertexTriplets.length; i++){
+        var v0 = _vertices[VertexTriplets[i][0]].clone();
+        var v1 = _vertices[VertexTriplets[i][1]].clone();
+        var v2 = _vertices[VertexTriplets[i][2]].clone();
+        var mid= v0.clone().add(v2).multiplyScalar(0.5);
+        this.original_laplacians_L1.push(v1.sub(mid));
+        VertexTripletsIndexR.push([i,i+1]);
+    }
+    
+    //computing triplets of edges for compute difference of rotations 
+    var EdgeTriplets=[];
+    for(var i=0;i<edges.length-2;i++){
+        EdgeTriplets.push([i,i+1,i+2]);
+    }
+    this.EdgeTriplets=EdgeTriplets;
+    
+    //Working with L0 for compute rotations
+    // defining as laplacians as edges
+    // laplacian are consecutive diference 
+    
+    this.n_laplacians_P = edges.length;
+    this.n_laplacians_R = EdgeTriplets.length;
+    for(var i = 0; i < this.n_laplacians_P; i++){
+        this.original_laplacians_P.push(_vertices[edges[i][1]].clone().sub(_vertices[edges[i][0]]));
+    }
+    this.A=zeros(this.n_laplacians_P * 3 + this.n_laplacians_R * 9 + this.fixedVertices.length * 3 + this.FixedRotation.length * 3,this.IndexVertices.length * 3 + this.R.length * 3);
+    this.b=zeros(this.n_laplacians_P * 3 + this.n_laplacians_R * 9 + this.fixedVertices.length * 3 + this.FixedRotation.length * 3);
+    // computing rotations
+    for(var i = 0; i < 2; i++){
+        this.updateAB();
+        this.solve();
+        this.updateR();
+    }
+    
+    //Working with L1 fpr computing vertex positions
+    var A=zeros(VertexTriplets.length +this.fixedVertices.length,this.IndexVertices.length);
+    var bx=zeros(VertexTriplets.length +this.fixedVertices.length);
+    var by=zeros(VertexTriplets.length +this.fixedVertices.length);
+    var bz=zeros(VertexTriplets.length +this.fixedVertices.length);
+    for(var i = 0; i < VertexTriplets.length; i++){
+           A.val[i*A.n+VertexTriplets[i][0]]=-0.5;
+           A.val[i*A.n+VertexTriplets[i][1]]=1;
+           A.val[i*A.n+VertexTriplets[i][2]]=-0.5;
+    }
+    for(var i = 0; i < this.fixedVertices.length; i++){
+            var index = this.fixedVertices[i];
+            A.val[(VertexTriplets.length+i)*A.n+index]=this.constrainWeight;
+    }
+    for(var i = 0; i < VertexTriplets.length; i++){
+        var r0= this.R[VertexTripletsIndexR[i][0]];
+        var r1= this.R[VertexTripletsIndexR[i][1]];
+        var r = this.averageRotation(r0, r1);
+        var l1=mat([this.original_laplacians_L1[i].x,this.original_laplacians_L1[i].y,this.original_laplacians_L1[i].z]);
+        var rotated_laplacian = mulMatrixVector(r,l1);
+        bx[i] = rotated_laplacian[0];
+        by[i] = rotated_laplacian[1];
+        bz[i] = rotated_laplacian[2];
+    }
+    for(var i = 0; i < this.fixedVertices.length; i++){
+        var index = this.fixedVertices[i];
+        bx[VertexTriplets.length + i] = _vertices[index].x * this.constrainWeight;
+        by[VertexTriplets.length + i] = _vertices[index].y * this.constrainWeight;
+        bz[VertexTriplets.length + i] = _vertices[index].z * this.constrainWeight;;
+    }
+    var spA=sparse(A);
+    var labx = new Lalolab("laloxname",false,"libs/lalolib") ; 
+    var laby = new Lalolab("laloyname",false,"libs/lalolib") ; 
+    var labz = new Lalolab("lalozname",false,"libs/lalolib") ; 
+    labx.load(spA, "spA");
+    laby.load(spA, "spA");
+    labz.load(spA, "spA");
+    labx.load(bx, "bx");
+    laby.load(by, "by");
+    labz.load(bz, "bz");
+    labx.exec("vx=spcgnr(spA,bx)");	
+    laby.exec("vy=spcgnr(spA,by)");	
+    labz.exec("vz=spcgnr(spA,bz)");
+    var copyn=this.IndexVertices.length;
+    flaglabx=false;
+    flaglaby=false;
+    flaglaby=false;
+    console.log("begin labs")    
+    labx.getObject("vx", function ( result ) { // recover the value of a variable from the lab
+          for (var i=0;i<copyn;i++){
+              _vertices[i].setX(result[i]);   
+          }
+          //console.log(result[0]);
+          flaglabx=true;
+          console.log(flaglabx);
+          labx.close();
+    });	
+    laby.getObject("vy", function ( result ) { // recover the value of a variable from the lab
+        for (var i=0;i<copyn;i++){
+              _vertices[i].setY(result[i]);
+        }
+        //console.log(result[0]);
+        flaglaby=true;
+        console.log(flaglaby);
+        laby.close();
+    });
+    labz.getObject("vz", function ( result ) { // recover the value of a variable from the lab
+        for (var i=0;i<copyn;i++){
+              _vertices[i].setZ(result[i]);
+        }
+        //console.log(result[0]);
+        flaglabz=true;
+        console.log(flaglabz);
+        labz.close();
+    });
+    this.updateRender();
+}
+pathToEdit.prototype.updateAB=function(){
+    var col=this.A.n;
+    for(var i = 0; i < this.n_laplacians_P; i++){
+            var r=this.R[i];
+            var l0vector = this.original_laplacians_P[i];
+            var l0=l0vector.toArray();
+            l0=mulMatrixVector(r,mat(l0));
+            var edge = this.edges[i];
+            var v0 = edge[0];
+            var v1 = edge[1];
+            this.A.val[(i * 3 + 0)*col+ v0 * 3 + 0] = -1;
+            this.A.val[(i * 3 + 0)*col+ v1 * 3 + 0] = 1;
+            this.A.val[(i * 3 + 0)*col+this.IndexVertices.length * 3 + (i + 0) * 3 + 0] = 0;
+            this.A.val[(i * 3 + 0)*col+this.IndexVertices.length * 3 + (i + 0) * 3 + 1] = -l0[2];
+            this.A.val[(i * 3 + 0)*col+this.IndexVertices.length * 3 + (i + 0) * 3 + 2] = l0[1];
+            this.b[i * 3 + 0] = l0[0];
+            this.A.val[(i * 3 + 1)*col+v0 * 3 + 1] = -1;
+            this.A.val[(i * 3 + 1)*col+v1 * 3 + 1] = 1;
+            this.A.val[(i * 3 + 1)*col+this.IndexVertices.length * 3 + (i + 0) * 3 + 0] = l0[2];
+            this.A.val[(i * 3 + 1)*col+this.IndexVertices.length * 3 + (i + 0) * 3 + 1] = 0;
+            this.A.val[(i * 3 + 1)*col+this.IndexVertices.length * 3 + (i + 0) * 3 + 2] = -l0[0];
+            this.b[i * 3 + 1] = l0[1];
+            this.A.val[(i * 3 + 2)*col+v0 * 3 + 2] = -1;
+            this.A.val[(i * 3 + 2)*col+v1 * 3 + 2] = 1;
+            this.A.val[(i * 3 + 2)*col+this.IndexVertices.length * 3 + (i + 0) * 3 + 0] = -l0[1];
+            this.A.val[(i * 3 + 2)*col+this.IndexVertices.length * 3 + (i + 0) * 3 + 1] = l0[0];
+            this.A.val[(i * 3 + 2)*col+this.IndexVertices.length * 3 + (i + 0) * 3 + 2] = 0;
+            this.b[(i * 3 + 2)] = l0[2];this.n_laplacians_R * 9
+    }
+    for(var i = 0; i < this.n_laplacians_R; i++){
+            var e0 = this.EdgeTriplets[i][0];
+            var e1 = this.EdgeTriplets[i][1];
+            var e2 = this.EdgeTriplets[i][2];
+            for(var j = 0; j < 3; j++){
+                this.A.val[(this.n_laplacians_P * 3 + i * 9 + j)*col+this.IndexVertices.length * 3 + e0 * 3 + 0] = 0;
+                this.A.val[(this.n_laplacians_P * 3 + i * 9 + j)*col+this.IndexVertices.length * 3 + e0 * 3 + 1] = this.weight * -0.5 * this.R[e0].val[2*3+j];
+                this.A.val[(this.n_laplacians_P * 3 + i * 9 + j)*col+this.IndexVertices.length * 3 + e0 * 3 + 2] = this.weight * -0.5 * -this.R[e0].val[1*3+j];
+                this.A.val[(this.n_laplacians_P * 3 + i * 9 + j)*col+this.IndexVertices.length * 3 + e1 * 3 + 0] = 0;
+                this.A.val[(this.n_laplacians_P * 3 + i * 9 + j)*col+this.IndexVertices.length * 3 + e1 * 3 + 1] = this.weight * 1 * this.R[e1].val[2*3+j];
+                this.A.val[(this.n_laplacians_P * 3 + i * 9 + j)*col+this.IndexVertices.length * 3 + e1 * 3 + 2] = this.weight * 1 * -this.R[e1].val[1*3+j];
+                this.A.val[(this.n_laplacians_P * 3 + i * 9 + j)*col+this.IndexVertices.length * 3 + e2 * 3 + 0] = 0;
+                this.A.val[(this.n_laplacians_P * 3 + i * 9 + j)*col+this.IndexVertices.length * 3 + e2 * 3 + 1] = this.weight * -0.5 * this.R[e2].val[2*3+j];
+                this.A.val[(this.n_laplacians_P * 3 + i * 9 + j)*col+this.IndexVertices.length * 3 + e2 * 3 + 2] = this.weight * -0.5 * -this.R[e2].val[1*3+j];
+                this.b[this.n_laplacians_P * 3 + i * 9 + j] = this.weight * ((0.5 * this.R[e0].val[0*3+j] - 1 * this.R[e1].val[0*3+j]) + 0.5 * this.R[e2].val[0*3+j]);
+                this.A.val[(this.n_laplacians_P * 3 + i * 9 + 3 + j)*col+this.IndexVertices.length * 3 + e0 * 3 + 0] = this.weight * -0.5 * -this.R[e0].val[2*3+j];
+                this.A.val[(this.n_laplacians_P * 3 + i * 9 + 3 + j)*col+this.IndexVertices.length * 3 + e0 * 3 + 1] = 0;
+                this.A.val[(this.n_laplacians_P * 3 + i * 9 + 3 + j)*col+this.IndexVertices.length * 3 + e0 * 3 + 2] = this.weight * -0.5 * this.R[e0].val[0*3+j];
+                this.A.val[(this.n_laplacians_P * 3 + i * 9 + 3 + j)*col+this.IndexVertices.length * 3 + e1 * 3 + 0] = this.weight * 1 * -this.R[e1].val[2*3+j];
+                this.A.val[(this.n_laplacians_P * 3 + i * 9 + 3 + j)*col+this.IndexVertices.length * 3 + e1 * 3 + 1] = 0;
+                this.A.val[(this.n_laplacians_P * 3 + i * 9 + 3 + j)*col+this.IndexVertices.length * 3 + e1 * 3 + 2] = this.weight * 1 * this.R[e1].val[0*3+j];
+                this.A.val[(this.n_laplacians_P * 3 + i * 9 + 3 + j)*col+this.IndexVertices.length * 3 + e2 * 3 + 0] = this.weight * -0.5 * -this.R[e2].val[2*3+j];
+                this.A.val[(this.n_laplacians_P * 3 + i * 9 + 3 + j)*col+this.IndexVertices.length * 3 + e2 * 3 + 1] = 0;
+                this.A.val[(this.n_laplacians_P * 3 + i * 9 + 3 + j)*col+this.IndexVertices.length * 3 + e2 * 3 + 2] = this.weight * -0.5 * this.R[e2].val[0*3+j];
+                this.b[this.n_laplacians_P * 3 + i * 9 + 3 + j] = this.weight * ((0.5 * this.R[e0].val[1*3+j] - 1* this.R[e1].val[1*3+j]) + 0.5 * this.R[e2].val[1*3+j]);
+                this.A.val[(this.n_laplacians_P * 3 + i * 9 + 6 + j)*col+this.IndexVertices.length * 3 + e0 * 3 + 0] = this.weight * -0.5 * this.R[e0].val[1*3+j];
+                this.A.val[(this.n_laplacians_P * 3 + i * 9 + 6 + j)*col+this.IndexVertices.length * 3 + e0 * 3 + 1] = this.weight * -0.5 * -this.R[e0].val[0*3+j];
+                this.A.val[(this.n_laplacians_P * 3 + i * 9 + 6 + j)*col+this.IndexVertices.length * 3 + e0 * 3 + 2] = 0;
+                this.A.val[(this.n_laplacians_P * 3 + i * 9 + 6 + j)*col+this.IndexVertices.length * 3 + e1 * 3 + 0] = this.weight * 1 * this.R[e1].val[1*3+j];
+                this.A.val[(this.n_laplacians_P * 3 + i * 9 + 6 + j)*col+this.IndexVertices.length * 3 + e1 * 3 + 1] = this.weight * 1 * -this.R[e1].val[0*3+j];
+                this.A.val[(this.n_laplacians_P * 3 + i * 9 + 6 + j)*col+this.IndexVertices.length * 3 + e1 * 3 + 2] = 0
+                this.A.val[(this.n_laplacians_P * 3 + i * 9 + 6 + j)*col+this.IndexVertices.length * 3 + e2 * 3 + 0] = this.weight * -0.5 * this.R[e2].val[1*3+j];
+                this.A.val[(this.n_laplacians_P * 3 + i * 9 + 6 + j)*col+this.IndexVertices.length * 3 + e2 * 3 + 1] = this.weight * -0.5 * -this.R[e2].val[0*3+j];
+                this.A.val[(this.n_laplacians_P * 3 + i * 9 + 6 + j)*col+this.IndexVertices.length * 3 + e2 * 3 + 2] = 0;
+                this.b[this.n_laplacians_P * 3 + i * 9 + 6 + j] = this.weight * ((0.5 * this.R[e0].val[2*3+j] - 1 * this.R[e1].val[2*3+j]) + 0.5 * this.R[e2].val[2*3+j]);
+            }
+
+    }
+    for(var i = 0; i < this.fixedVertices.length; i++){
+            var index = this.fixedVertices[i];
+            this.A.val[(this.n_laplacians_P * 3 +  this.n_laplacians_R * 9 + 3 * i + 0)*col+index * 3 + 0] = this.constrainWeight;
+            this.A.val[(this.n_laplacians_P * 3 +  this.n_laplacians_R * 9 + 3 * i + 1)*col+index * 3 + 1] = this.constrainWeight;
+            this.A.val[(this.n_laplacians_P * 3 +  this.n_laplacians_R * 9 + 3 * i + 2)*col+index * 3 + 2] = this.constrainWeight;
+            this.b[this.n_laplacians_P * 3 +  this.n_laplacians_R * 9 +  3 * i + 0] = this.constrainWeight * this.meshDS.positions[this.IndexVertices[index]].x;
+            this.b[this.n_laplacians_P * 3 +  this.n_laplacians_R * 9 +  3 * i + 1] = this.constrainWeight * this.meshDS.positions[this.IndexVertices[index]].y;
+            this.b[this.n_laplacians_P * 3 +  this.n_laplacians_R * 9 +  3 * i + 2] = this.constrainWeight * this.meshDS.positions[this.IndexVertices[index]].z;
+    }
+
+    for(var i = 0; i < this.FixedRotation.length; i++){
+            var index = this.FixedRotation[i];
+            this.A.val[(this.n_laplacians_P * 3 + this.n_laplacians_R * 9 + this.fixedVertices.length * 3 + i * 3 + 0)*col+this.IndexVertices.length * 3 + index * 3 + 0] = this.constrainWeight;
+            this.A.val[(this.n_laplacians_P * 3 + this.n_laplacians_R * 9 + this.fixedVertices.length * 3 + i * 3 + 1)*col+this.IndexVertices.length * 3 + index * 3 + 1] = this.constrainWeight;
+            this.A.val[(this.n_laplacians_P * 3 + this.n_laplacians_R * 9 + this.fixedVertices.length * 3 + i * 3 + 2)*col+this.IndexVertices.length * 3 + index * 3 + 2] = this.constrainWeight;
+            this.b[this.n_laplacians_P * 3 + this.n_laplacians_R * 9 + this.fixedVertices.length * 3 + i * 3 + 0] = 0;
+            this.b[this.n_laplacians_P * 3 + this.n_laplacians_R * 9 + this.fixedVertices.length * 3 + i * 3 + 1] = 0;
+            this.b[this.n_laplacians_P * 3 + this.n_laplacians_R * 9 + this.fixedVertices.length * 3 + i * 3 + 2] = 0;
+    }
+    console.log("finist updateAB");
+}
+pathToEdit.prototype.solve=function(){
+    var spA=sparse(this.A);
+    this.vxyz_rxyz=spcgnr(spA,this.b);
+    console.log("finist solve");
+}
+pathToEdit.prototype.averageRotation=function(r0,r1){
+    var r = zeros(3,3);
+    for(var x = 0; x < 3; x++){
+        for(var y = 0; y < 3; y++){
+            r.val[x*r.n+y] = (r0.val[x*r0.n+y] + r1.val[x*r1.n+y]) / 2;
+        }
+        var length = Math.sqrt(r.val[x*r.n+0] * r.val[x*r.n+0] + r.val[x*r.n+1] * r.val[x*r.n+1] + r.val[x*r.n+2] * r.val[x*r.n+2]);
+        for(var y = 0; y < 3; y++){
+            r.val[x*r.n+y] /= length;
+        }
+    }
+    return r;
 }
