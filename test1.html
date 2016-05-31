@@ -38,12 +38,13 @@
      <button id="holesButton" disabled="disabled">Holes</button>
       <script src="http://mlweb.loria.fr/lalolibworker.js"></script>
      <script src="libs/numeric-1.2.6.js"></script>
+     <script src="libs/victor.min.js"></script> 
       -->
     <script src="libs/CurveDeformation.js"></script>     
     <script  type="application/x-javascript" src="libs/lalolib/lalolib.js"></script>
     <script src="libs/d3.min.js"></script>
     <script src="libs/doubly-linked-list.js"></script>    
-    <script src="libs/victor.min.js"></script> 
+    
 	</head>
 	<body>
         <div class="overcanvas"><br>
@@ -55,7 +56,8 @@
         <div id="buttonsSBS" class="stepbystep">
             <p>
             <label><input type="checkbox" id="checkGrid">Grid</label><br/>        
-            <label><input type="checkbox" id="checkMesh">Mesh </label><br/>     
+            <label><input type="checkbox" id="checkMesh">Mesh </label><br/>  
+            <label><input type="checkbox" id="checkMeshROI">ROI </label><br/>  
             <button id="opButton">Optimize Boundary </button>
             <button id="fixButton"> Fix Boundary </button>       
             <button id="inflationButton">Inflation </button>
@@ -94,7 +96,7 @@
         var gridgeometry = new THREE.Object3D();
         var checkGrid=document.getElementById("checkGrid");
         var checkMesh=document.getElementById("checkMesh");
-        
+        var checkMeshROI=document.getElementById("checkMeshROI");
         gridgeometry.name="Grid2D";
         LineSample.name="LineSample";
         materialReal = new THREE.LineBasicMaterial( { color: 0xff0000, linewidth: 2 } );
@@ -226,7 +228,7 @@
                      //setup.scene.add(sphereMouse);
                      submesh= new pathToEdit(radiusROI,indexPointToEdit,indexCurvetoEdit,indexPointEditInFixedVertex);
                      //submesh.updateRender();
-                     console.log(submesh);
+                     //console.log(submesh);
                  }
             }
         }
@@ -258,6 +260,7 @@
                        FixedVertex.push(i);
                    }
                    ListOfCurves.push([0,FixedVertex.length-1]);
+                   ListOfCurvesGeometry=[];     
                    cancelRender=false;
                    render();    
                  }
@@ -265,16 +268,18 @@
             if(ModeCurveDeformation){
                 isDeforming=false;
                 radiusROI=sizeGrid/2;
-                var wireframeLines = hemesh.toWireframeGeometry();
-        var wireframe = new THREE.LineSegments(wireframeLines, new THREE.LineBasicMaterial({
-            color: 0xff2222,
-            opacity: 0.2,
-            transparent: true,
-        }));
+                /*var wireframeLines = hemesh.toWireframeGeometry();
+                var wireframe = new THREE.LineSegments(wireframeLines, new THREE.LineBasicMaterial({
+                    color: 0xff2222,
+                    opacity: 0.2,
+                    transparent: true,
+                }));
                 wireframe.name="wireframe";
-        setup.scene.add(wireframe);
+                setup.scene.add(wireframe);*/
                 startButtonF();
-                
+                if(submesh!=undefined && submesh.flagdifution==false && indexPointToEdit!=-1){
+                    inflationFunction3();
+                }
                 //var meshROI=setup.scene.getObjectByName("meshROI");
                 //var particlepar=setup.scene.getObjectByName("pruebapar");
                 //setup.scene.remove(meshROI);
@@ -303,10 +308,20 @@
               GridMeshVertexArray=[];
               GridMeshFacesArray=[];
               TableHashIndextoPosition=[];
+              FixedVertex=[];
               cancelRender=false;
+              if(ModeFibermesh){
+                  //setup.camera=new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 1, 1000);
+                  setup.controls.reset();
+                  setup.initCamera();
+              }
               ModeFibermesh=false;
               ModeCurveDeformation=false;
               ModeDrawInitialCurve=true;
+              setup.controls.enabled=false;
+              ListOfCurves=[];
+              ListOfCurvesGeometry=[];
+              ListOfCurvesObject=[];
               //FirstMesh=true;
               render();
          }
