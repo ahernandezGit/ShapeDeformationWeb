@@ -118,7 +118,7 @@ function matrixtoProcessCurvatureEdgeLength(){
 			ri += n; 
     }
     Ac=sparse(A);
-    if(n<900){   
+    if(n<50){   
         AcT=transposespMatrix(Ac);  
         var AtA=mulspMatrixspMatrix(AcT,Ac);
         invAcTAc=inv(AtA);
@@ -143,7 +143,7 @@ function FirstMatrixtoProcessCurvatureEdgeLength(){
 			ri += n; 
     }
     First_Ac=sparse(A);
-    if(n<900){   
+    if(n<50){   
         First_AcT=transposespMatrix(First_Ac);
         var AtA=mulspMatrixspMatrix(First_AcT,First_Ac);
         First_invAcTAc=inv(AtA);
@@ -177,7 +177,7 @@ function FisrtIterationCurvaturesProcess(){
     console.log("comprovation finish");
     return c2;
     */
-    if(n<900){
+    if(n<50){
         var c=mulMatrixVector(First_invAcTAc,mulspMatrixVector(First_AcT,b));
     }
     else{
@@ -202,7 +202,7 @@ function IterationCurvaturesProcess(cc){
         
     }
     //var c=cgnr(A,b);
-    if(n<900){
+    if(n<50){
         var c=mulMatrixVector(invAcTAc,mulspMatrixVector(AcT,b));
     }
     else{
@@ -246,7 +246,7 @@ function FisrtIterationEdgeLength(){
    
     //var el=cgnr(A,b);
     //console.log(c.length);
-    if(n<900){
+    if(n<50){
         var el=mulMatrixVector(First_invAcTAc,mulspMatrixVector(First_AcT,b));
     }
     else{
@@ -277,7 +277,7 @@ function IterationEdgeLength(el){
         }
     }
     //var el=cgnr(A,b);
-    if(n<900){
+    if(n<50){
         var el=mulMatrixVector(invAcTAc,mulspMatrixVector(AcT,b));
     }
     else{
@@ -400,7 +400,7 @@ function IterationUpdateVector(lapla,etaarray){
     var by=getCols(b,[1]);
     var bz=getCols(b,[2]);
     var spA=sparse(A);
-    if(n<900){
+    if(n<50){
         var AT=transposespMatrix(spA);  
         var AtA=mulspMatrixspMatrix(AT,spA);
         var invATA=inv(AtA);
@@ -520,7 +520,7 @@ function updateRenderMesh(){
     if(flaglabx && flaglaby && flaglabz){
         var mesh=setup.scene.getObjectByName("mesh");
 
-        var wireframe=setup.scene.getObjectByName("wireframe");
+        var wireframe=setup.scene.getObjectByName("wireframeMesh");
 
         mesh.geometry.verticesNeedUpdate = true;
 
@@ -531,12 +531,405 @@ function updateRenderMesh(){
             opacity: 0.2,
             transparent: true,
         }));
+        wireframe.name="wireframeMesh";
         setup.scene.add(wireframe);
         cancelRender=false;
         render();
     }
     else{
         setTimeout(updateRenderMesh,500);
+        console.log("sigo esperando para render");
+    }
+}
+function SurfaceOptimization(FV,uniformLaplacian,heStructure){
+    this.FixedVertex=FV;
+    this.laplacian=uniformLaplacian; 
+    this.hemesh=heStructure;
+}
+SurfaceOptimization.prototype.meanCurvaturesCurveCotangent=function(v){
+    var hs = this.hemesh.vertexHalfedge(v);
+    var vetor=new THREE.Vector3(0.0, 0.0, 0.0);  
+    var area=0;
+    //var edgeGeometry = new THREE.Geometry();
+    var hemesh=this.hemesh;
+    hemesh.vertexCirculator(function(he){
+       var h2=hemesh.halfedgeNext(he);
+       var h4=hemesh.halfedgeOpposite(hemesh.halfedgeSinkCCW(he));
+       var face=hemesh.halfedgeFace(he);
+       if(h2>-1 && h4>-1){
+           var h3 = hemesh.halfedgeNext(h2); 
+           var h5 = hemesh.halfedgeNext(h4);  
+           var u = hemesh.halfedgeDirection(h3);
+           var v = hemesh.halfedgeDirection(hemesh.halfedgeOpposite(h2));
+           var uo = hemesh.halfedgeDirection(h5);
+           var vo = hemesh.halfedgeDirection(hemesh.halfedgeOpposite(h4));
+           var cotansum=u.dot(v)/u.clone().cross(v).length()+uo.dot(vo)/uo.clone().cross(vo).length();
+           cotansum=-0.5*cotansum;
+           var pjpi=hemesh.halfedgeDirection(he);
+           vetor.add(pjpi.multiplyScalar(cotansum));
+       }
+       area+=hemesh.faceArea(face);
+   },hs);
+   area=area/3;
+   vetor.divideScalar(area);
+   //edgeGeometry.vertices.push(hemesh.positions[v],hemesh.positions[v].clone().add(vetor).multiplyScalar(0.5));
+   //var material = new THREE.LineBasicMaterial( {color: 0x27B327, linewidth: 2 } );
+   //var edge=new THREE.Line(edgeGeometry,material);
+   //setup.scene.add(edge);
+   return 0.125*vetor.length();    
+}
+SurfaceOptimization.prototype.FirstCurvaturesCurve=function(){
+    var n=this.FixedVertex.length;
+    var result=[];
+    for(var i=0;i<n;i++){
+        result.push(this.meanCurvaturesCurveCotangent(this.FixedVertex[i]));
+    }
+    //console.log(result);
+    return result;
+}
+SurfaceOptimization.prototype.FirstMatrixtoProcessCurvatureEdgeLength=function(){
+    var n=this.laplacian.n;
+    //var fL=full(L);
+    var m=n+this.FixedVertex.length;
+    var A=zeros(m,n);
+    for(var i=n;i<m;i++){
+        A.val[i*A.n+FixedVertex[i-n]]=1.0;            
+    }
+    var ri = 0;
+    for (var i = 0; i < n; i++) {
+			var s = L.rows[i];
+			var e = L.rows[i+1];
+			for ( var k=s; k < e; k++) {
+				A.val[ri + L.cols[k] ] = L.val[k];
+			}
+			ri += n; 
+    }
+    this.First_Ac=sparse(A);
+    if(n<50){   
+        this.First_AcT=transposespMatrix(First_Ac);
+        var AtA=mulspMatrixspMatrix(First_AcT,First_Ac);
+        this.First_invAcTAc=inv(AtA);
+    }
+}
+SurfaceOptimization.prototype.computeAverageEdgeLength=function(){
+    var n=this.laplacian.n;
+    var result=[];
+    var hemesh=this.hemesh;
+    for(var i=0;i<n;i++){
+        var h=hemesh.vertexHalfedge(i);
+        var ael=0;
+        var val=0;
+        hemesh.vertexCirculator(function(he){
+            var ohe=hemesh.halfedgeOpposite(he);
+            var vohe=hemesh.halfedgeVertex(ohe);
+            var len=hemesh.positions[i].clone().sub(hemesh.positions[vohe]).length();
+            ael=ael+len;
+            val++;
+        },h);
+        ael=ael/val;
+        result.push(ael);
+    }
+    return result;
+}
+SurfaceOptimization.prototype.FisrtIterationEdgeLength=function(){
+    var n=this.laplacian.n;
+    var m=n+this.FixedVertex.length;
+    //var fL=full(L);
+    //var A=zeros(m,n);
+    var b=zeros(m);
+    var bconstrain= ones(m-n);
+    //console.log(bconstrain);
+    for(var i=n;i<m;i++){
+        b[i]=bconstrain[i-n];
+       //A.val[i*A.n+FixedVertex[i-n]]=1.0;
+    }
+   
+    //var el=cgnr(A,b);
+    //console.log(c.length);
+    if(n<50){
+        var el=mulMatrixVector(this.First_invAcTAc,mulspMatrixVector(this.First_AcT,b));
+    }
+    else{
+        var el=spcgnr(this.First_Ac,b);
+    }
+    this.First_Ac={};
+    this.First_AcT={};
+    this.First_invAcTAc={};
+    console.log("First edge iteration finish");
+    return el;
+}
+SurfaceOptimization.prototype.FisrtIterationCurvaturesProcess=function(){
+    var n=this.laplacian.n;
+    var m=n+this.FixedVertex.length;
+    var b=zeros(m);
+    var bconstrain=this.FirstCurvaturesCurve();
+    for(var i=n;i<m;i++){
+        b[i]=bconstrain[i-n];
+    }
+    if(n<50){
+        var c=mulMatrixVector(this.First_invAcTAc,mulspMatrixVector(this.First_AcT,b));
+    }
+    else{
+        var c=spcgnr(this.First_Ac,b);
+        console.log(n);
+    }
+    return c;
+}
+SurfaceOptimization.prototype.computeEdgeVector=function(edgeLength){
+    var n=this.FixedVertex.length;
+    function eta(i,j,v){
+        this.i=i;
+        this.j=j;
+        this.vector=v;
+    }
+    var resultij=[];
+    var result=[];
+    //var edgeGeometry = new THREE.Geometry();
+    //var material = new THREE.LineBasicMaterial( {color: 0xff2222, linewidth: 2 } );
+    //var edgeLength=computeAverageEdgeLength();
+    var hemesh=this.hemesh;
+    for(var i=0;i<n;i++){
+        var h=hemesh.vertexHalfedge(FixedVertex[i]);
+        var a=this.FixedVertex[i];
+        hemesh.vertexCirculator(function(he){
+            var j=hemesh.halfedgeSource(he);
+            resultij.push([a,j]);
+        },h);
+    }
+    for(var i=0;i<resultij.length;i++){
+        var s=(edgeLength[resultij[i][0]]+edgeLength[resultij[i][1]])/2;
+        var v=hemesh.positions[resultij[i][0]].clone().sub(hemesh.positions[resultij[i][1]]);
+        v.normalize();
+        v.multiplyScalar(s);
+        result.push(new eta(resultij[i][0],resultij[i][1],v));
+        //edgeGeometry.vertices.push(hemesh.positions[resultij[i][1]],hemesh.positions[resultij[i][1]].clone().add(v));
+    }
+    //var edge=new THREE.LineSegments(edgeGeometry,material);
+    //setup.scene.add(edge); 
+    console.log("compute edge vector finish");
+    return result;
+}
+SurfaceOptimization.prototype.computeIntegratedLaplacian=function(curvature){
+    var n=curvature.length;
+    var result=[];    
+    //var edgeGeometry = new THREE.Geometry();
+    //var material = new THREE.LineBasicMaterial( {color: 0xff2222, linewidth: 2 } );
+    var hemesh=this.hemesh;
+    for(var i=0;i<n;i++){
+        //compute Ai and ni
+        var area=0;
+        var normal=new THREE.Vector3(0,0,0);
+        var h=hemesh.vertexHalfedge(i);
+        var t=0;
+        hemesh.vertexCirculator(function(he){
+            var face=hemesh.halfedgeFace(he);
+            var verts=hemesh.faceVertices(face);
+            var c = new THREE.Vector3();
+            area+=hemesh.faceArea(face);
+            c.crossVectors(hemesh.positions[verts[2]].clone().sub(hemesh.positions[verts[0]]),hemesh.positions[verts[1]].clone().sub(hemesh.positions[verts[0]]));
+            c.normalize();
+            normal.add(c);
+            t++;
+        },h);
+        area=area/3;
+        normal.normalize();
+        //compute laplacian i
+        var laplaciani=normal.multiplyScalar(area*curvature[i]);
+        result.push(laplaciani);
+        //edgeGeometry.vertices.push(hemesh.positions[i],hemesh.positions[i].clone().add(laplaciani));
+           
+    }
+    //var edge=new THREE.LineSegments(edgeGeometry,material);
+    //setup.scene.add(edge); 
+    console.log("compute integrated laplacian finish");
+    return result;
+}
+SurfaceOptimization.prototype.IterationUpdateVector=function(lapla,etaarray){
+    var n=lapla.length;
+    //var fL=full(L);
+    var m=etaarray.length;
+    var r=this.FixedVertex.length;
+    var A=zeros(n+r+m,n);
+    var b=zeros(n+r+m,3);
+    var ri = 0;
+    var L=this.laplacian;
+    var hemesh=this.hemesh;
+    for(var i=0;i<n;i++){
+        var s = L.rows[i];
+        var e = L.rows[i+1];
+        for ( var k=s; k < e; k++) {
+            A.val[ri + L.cols[k] ] = L.val[k];
+        }
+        ri += n; 
+        b.val[3*i]=lapla[i].x;
+        b.val[3*i+1]=lapla[i].y;
+        b.val[3*i+2]=lapla[i].z;
+    }
+    var web=100.0;
+    for(var i=n;i<n+r;i++){
+        // 100.0 for fixed vertices
+        b.val[3*i]=web*hemesh.positions[FixedVertex[i-n]].x;
+        b.val[3*i+1]=web*hemesh.positions[FixedVertex[i-n]].y;
+        b.val[3*i+2]=web*hemesh.positions[FixedVertex[i-n]].z;
+        
+        // 100.0 for fixed vertices
+        
+        A.val[i*A.n+FixedVertex[i-n]]=web;
+        
+    }
+     // 0.01 for vertices in the B subset
+    var wel=0.01;
+    for(var i=n+r;i<n+r+m;i++){
+        b.val[3*i]=wel*etaarray[i-n-r].vector.x;
+        b.val[3*i+1]=wel*etaarray[i-n-r].vector.y;
+        b.val[3*i+2]=wel*etaarray[i-n-r].vector.z;
+        A.val[i*A.n+etaarray[i-n-r].i]=wel;
+        A.val[i*A.n+etaarray[i-n-r].j]=-wel;
+    }
+    var bx=getCols(b,[0]);
+    var by=getCols(b,[1]);
+    var bz=getCols(b,[2]);
+    var spA=sparse(A);
+    if(n<50){
+        var AT=transposespMatrix(spA);  
+        var AtA=mulspMatrixspMatrix(AT,spA);
+        var invATA=inv(AtA);
+        var labx = new Lalolab("laloxname",false,"libs/lalolib") ; 
+        var laby = new Lalolab("laloyname",false,"libs/lalolib") ; 
+        var labz = new Lalolab("lalozname",false,"libs/lalolib") ; 
+        labx.load(AT, "AT"); 
+        labx.load(invATA, "invATA"); 
+        labx.load(bx, "bx");
+        laby.load(AT, "AT"); 
+        laby.load(invATA, "invATA"); 
+        laby.load(by, "by");
+        labz.load(AT, "AT"); 
+        labz.load(invATA, "invATA"); 
+        labz.load(bz, "bz");
+        labx.exec("vx= mulMatrixVector(invATA,mulspMatrixVector(AT,bx))");	
+        laby.exec("vy= mulMatrixVector(invATA,mulspMatrixVector(AT,by))");	
+        labz.exec("vz= mulMatrixVector(invATA,mulspMatrixVector(AT,bz))");	
+       
+        /*var gn=GridMeshVertexArray.length; 
+        var pr=pointSample.length;
+        var interiorpoints=gn-pr;
+        labx.getObject("vx", function ( result ) { // recover the value of a variable from the lab
+              for (var i=0;i<n;i++){
+                  hemesh.positions[i].setX(result[i]);
+                  if(i<interiorpoints){
+                      hemesh.positions[gn+i].setX(result[i]);
+                  }
+              }
+              //console.log(result[0]);
+              flaglabx=true;
+              //console.log(flaglabx);
+              labx.close();
+        });	
+        laby.getObject("vy", function ( result ) { // recover the value of a variable from the lab
+            for (var i=0;i<n;i++){
+                  hemesh.positions[i].setY(result[i]);
+                  if(i<interiorpoints){
+                      hemesh.positions[gn+i].setY(result[i]);
+                  }
+            }
+            //console.log(result[0]);
+            flaglaby=true;
+            //console.log(flaglaby);
+            laby.close();
+        });
+        labz.getObject("vz", function ( result ) { // recover the value of a variable from the lab
+            for (var i=0;i<n;i++){
+                  hemesh.positions[i].setZ(result[i]);
+                  if(i<interiorpoints){
+                      hemesh.positions[gn+i].setZ(-result[i]);
+                  }
+            }
+            //console.log(result[0]);
+            flaglabz=true;
+            //console.log(flaglabz);
+            labz.close();
+        });
+        //console.log(vx,vy,vz);
+        */
+        /*
+        var vx=mulMatrixVector(invATA,mulspMatrixVector(AT,bx));
+        var vy=mulMatrixVector(invATA,mulspMatrixVector(AT,by));
+        var vz=mulMatrixVector(invATA,mulspMatrixVector(AT,bz));
+        for (var i=0;i<n;i++){
+            hemesh.positions[i].set(vx[i],vy[i],vz[i]);
+            //hemesh.moveVertexTo(i, new THREE.Vector3(vx[i], vy[i], vz[i]));
+        }*/
+    }
+    else{
+        var labx = new Lalolab("laloxname",false,"libs/lalolib") ; 
+        var laby = new Lalolab("laloyname",false,"libs/lalolib") ; 
+        var labz = new Lalolab("lalozname",false,"libs/lalolib") ; 
+        labx.load(spA, "spA");
+        laby.load(spA, "spA");
+        labz.load(spA, "spA");
+        labx.load(bx, "bx");
+        laby.load(by, "by");
+        labz.load(bz, "bz");
+        labx.exec("vx=spcgnr(spA,bx)");	
+        laby.exec("vy=spcgnr(spA,by)");	
+        labz.exec("vz=spcgnr(spA,bz)");
+    }
+    flaglabx=false;
+    flaglaby=false;
+    flaglabz=false;
+    labx.getObject("vx", function ( result ) { // recover the value of a variable from the lab
+          for (var i=0;i<n;i++){
+              hemesh.positions[i].setX(result[i]);
+          }
+          //console.log(result[0]);
+          flaglabx=true;
+          //console.log(flaglabx);
+          labx.close();
+    });	
+    laby.getObject("vy", function ( result ) { // recover the value of a variable from the lab
+        for (var i=0;i<n;i++){
+              hemesh.positions[i].setY(result[i]);
+        }
+        //console.log(result[0]);
+        flaglaby=true;
+        //console.log(flaglaby);
+        laby.close();
+    });
+    labz.getObject("vz", function ( result ) { // recover the value of a variable from the lab
+        for (var i=0;i<n;i++){
+              hemesh.positions[i].setZ(result[i]);
+        }
+        //console.log(result[0]);
+        flaglabz=true;
+        //console.log(flaglabz);
+        labz.close();
+    });
+    console.log("update vertex finish");
+}
+SurfaceOptimization.prototype.updateRenderMesh=function(){
+    if(flaglabx && flaglaby && flaglabz){
+        var mesh=setup.scene.getObjectByName("mesh");
+
+        var wireframe=setup.scene.getObjectByName("wireframeMesh");
+
+        mesh.geometry.verticesNeedUpdate = true;
+
+        setup.scene.remove(wireframe);
+        wireframeLines = hemesh.toWireframeGeometry();
+        var wireframe = new THREE.LineSegments(wireframeLines, new THREE.LineBasicMaterial({
+            color: 0xff2222,
+            opacity: 0.2,
+            transparent: true,
+        }));
+        wireframe.name="wireframeMesh";
+        setup.scene.add(wireframe);
+        cancelRender=false;
+        render();
+        console.log("render ready class");
+    }
+    else{
+        setTimeout(this.updateRenderMesh,500);
+        console.log("sigo esperando para render class");
     }
 }
 /*

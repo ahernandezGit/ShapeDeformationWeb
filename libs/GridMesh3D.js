@@ -64,15 +64,23 @@ function createMesh2(){
         }
         fac.push(current);
     }
-    for(i=totalPoints-1;i>=interiorPointsNumber;i=i-1){
-        FixedVertex.push(i);
-    }
-    FixedVertex.reverse();
+   
     return [fac,vtx];
 }
 
 function drawMesh(yes){
     var mesh=setup.scene.getObjectByName("mesh");
+    if(mesh!= undefined){
+        if(yes){
+            mesh.visible=true;
+        }
+        else{
+            mesh.visible=false;
+        }
+    }
+}
+function drawMeshROI(yes){
+    var mesh=setup.scene.getObjectByName("meshROI");
     if(mesh!= undefined){
         if(yes){
             mesh.visible=true;

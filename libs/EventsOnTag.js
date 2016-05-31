@@ -57,12 +57,12 @@ function inflationFunction3(){
     Ac={};
     AcT={};
     invAcTAc={};
-    ListOfCurves.push([0,FixedVertex.length-1]);
 }
 
 function createInicialMesh() {
       
     var FacesVertices=createMesh2(); 
+    hemesh=new Hemesh();
     hemesh.fromFaceVertexArray(FacesVertices[0],FacesVertices[1]); 
     //hemesh.normalize();
     var wireframeLines = hemesh.toWireframeGeometry();
@@ -90,7 +90,7 @@ function createInicialMesh() {
     var debuglines=setup.scene.getObjectByName("DebugPoints");
     var debuglines2=setup.scene.getObjectByName("DebugPointsb");
     
-    wireframe.name="wireframe";
+    wireframe.name="wireframeMesh";
     mesh.name="mesh";
     
     if(Linesam!=undefined ){
@@ -107,9 +107,10 @@ function createInicialMesh() {
     }
     gridgeometry={};    
     ListOfCurvesGeometry.push(new THREE.Geometry());
-    for(var i=0;i<LineSample.geometry.vertices.length-1;i++){
-        ListOfCurvesGeometry[0].vertices.push(LineSample.geometry.vertices[i],LineSample.geometry.vertices[i+1]);
+    for(var i=ListOfCurves[0][0];i<ListOfCurves[0][1];i++){
+        ListOfCurvesGeometry[0].vertices.push(hemesh.positions[FixedVertex[i]],hemesh.positions[FixedVertex[i+1]]);
     }
+    ListOfCurvesGeometry[0].vertices.push(hemesh.positions[FixedVertex[ListOfCurves[0][0]]],hemesh.positions[FixedVertex[ListOfCurves[0][1]]]);
     ListOfCurvesObject[0]=new THREE.LineSegments(ListOfCurvesGeometry[0], materialSample);
     setup.scene.remove(LineSample);
     setup.scene.add(ListOfCurvesObject[0]);
@@ -125,6 +126,10 @@ function OtherMouseControls() {
      ///canvaswindows.on("mouseup",null);
      //canvaswindows.on("mousemove",null);
      setup.controls.enabled=true;
+     ModeCurveDeformation=false;     
+     ModeFibermesh=true;
+     ModeDrawInitialCurve=false;
+     ModeDebug=false;
      cancelRender=false;
      render();
 }
@@ -136,14 +141,13 @@ function saveTextAsFile(textToWrite){
 	var downloadLink = document.createElement("a");
 	downloadLink.download = fileNameToSaveAs;
 	downloadLink.innerHTML = "Download File";
-	if (window.URL != null)
+	if (window.URL != null )
 	{
 		// Chrome allows the link to be clicked
 		// without actually adding it to the DOM.
 		downloadLink.href = window.URL.createObjectURL(textFileAsBlob);
 	}
-	else
-	{
+	else{
 		// Firefox requires the link to be added to the DOM
 		// before it can be clicked.
 		downloadLink.href = window.URL.createObjectURL(textFileAsBlob);
@@ -281,7 +285,14 @@ d3.select("#checkMesh").on("click",function(){
        drawMesh(false);     
    }
 });
-
+d3.select("#checkMeshROI").on("click",function(){
+   if(checkMeshROI.checked){
+       drawMeshROI(true);
+   }    
+   else{
+       drawMeshROI(false);     
+   }
+});
 d3.select("#exportButton").on("click",function(){
    if(hemesh.positions.length!=0){
        var stringmesh=hemesh.toOBJ();
@@ -328,10 +339,13 @@ d3.select("#cdButton").on("click",function(){
      //canvaswindows.on("mousemove",null);
      
 });
-d3.select("#startButton").on("click",function(){
+d3.select("#startButton").on("click",startButtonF);
+function startButtonF(){
      setup.controls.enabled=true;
+     canvaswindows.style('cursor','default');
+     ListOfCurvesObject[0].material.color.set(0x0015FF);
      ModeCurveDeformation=false;     
      ModeFibermesh=true;
      ModeDrawInitialCurve=false;
      ModeDebug=false;
-});
+}
