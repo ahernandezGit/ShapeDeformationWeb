@@ -18,11 +18,22 @@ function fixBoundaryPoints() {
           else{
               fixBoundaryPoints();
           }
+          setTimeout(fixBoundaryPoints,1);
           //cancelRender=false;
           //render();
           //setTimeout(cancelAnimation,4000);
       }
       else{
+         for(var i=GridMeshVertexArray.length-pointSample.length;i<GridMeshVertexArray.length;i++){
+               FixedVertex.push(i);
+               if(i<0){
+                   console.log("problem in the curve ");
+                   FixedVertex=[];
+                   break;
+               }
+         }
+         ListOfCurves.push([0,FixedVertex.length-1]);
+         ListOfCurvesGeometry=[];  
          console.log("ptd zero");
       }
  }
@@ -60,7 +71,9 @@ function inflationFunction3(){
 }
 
 function createInicialMesh() {
-      
+    if(ModeDrawInitialCurve){
+        fixBoundaryPoints();
+    }  
     var FacesVertices=createMesh2(); 
     hemesh=new Hemesh();
     hemesh.fromFaceVertexArray(FacesVertices[0],FacesVertices[1]); 
@@ -115,9 +128,9 @@ function createInicialMesh() {
     setup.scene.remove(LineSample);
     setup.scene.add(ListOfCurvesObject[0]);
     setup.scene.add(mesh,wireframe);
-    GridMeshVertexArray=[];
-    GridMeshFacesArray=[];
-    TableHashIndextoPosition=[];
+    //GridMeshVertexArray=[];
+    //GridMeshFacesArray=[];
+    //TableHashIndextoPosition=[];
 }
 function OtherMouseControls() {
      points=[];
@@ -130,6 +143,8 @@ function OtherMouseControls() {
      ModeFibermesh=true;
      ModeDrawInitialCurve=false;
      ModeDebug=false;
+     ModeChangeType=false;
+    
      cancelRender=false;
      render();
 }

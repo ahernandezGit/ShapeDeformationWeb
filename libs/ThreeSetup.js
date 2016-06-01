@@ -210,10 +210,9 @@ ThreeSetup.prototype.render = function() {
                 if(particlesC!= undefined){
                     setup.scene.remove( particlesC );
                 }
-
-                    indexPointToEdit=-1;
-                    indexCurvetoEdit=-1;
-                    indexPointEditInFixedVertex=-1;
+                indexPointToEdit=-1;
+                indexCurvetoEdit=-1;
+                indexPointEditInFixedVertex=-1;
             }
         }
     }

@@ -806,7 +806,8 @@ function MappingVerteToStroke2(){
             if(gridBoundary[fi].associated.length!=0){
                 if(curvatures[j][0]==0){
                         if(gridBoundary[fi].associated[gridBoundary[fi].associated.length-1]==1){
-                            gridBoundary[fi].associated.unshift(curvatures[j][0]);
+                            gridBoundary[fi].associated[gridBoundary[fi].associated.length-1]=0;
+                            gridBoundary[fi].associated.push(1);
                         }
                         else{
                             gridBoundary[fi].associated.push(curvatures[j][0]);
@@ -816,9 +817,9 @@ function MappingVerteToStroke2(){
                      if(gridBoundary[fi].associated[0]==0){
                             gridBoundary[fi].associated.unshift(curvatures[j][0]);
                      }
-                    else{
+                     else{
                             gridBoundary[fi].associated.push(curvatures[j][0]);
-                    }
+                     }
                 }
                 else{
                     gridBoundary[fi].associated.push(curvatures[j][0]);        
@@ -1103,7 +1104,10 @@ function endAssociated2(){
     //var Bgeometry= new THREE.Object3D();
     for(var i=0;i<n;i++){
         if(gridBoundary[i].associated.indexOf(0)==-1){
-            gridBoundary[i].associated=gridBoundary[i].associated.sort();    
+            var lg=gridBoundary[i].associated.length;
+            if(gridBoundary[i].associated[0]>gridBoundary[i].associated[lg-1]){
+                gridBoundary[i].associated.reverse();
+            }
         }
     }
      for(var i=0;i<n;i++){
@@ -1115,7 +1119,7 @@ function endAssociated2(){
         console.log("i ",gridI[gridBoundary[i].index]);  
         console.log("j ",gridBoundary[i].index-(height+1)*gridI[gridBoundary[i].index]);
         console.log("boundary i+1",gridBoundary[(i+1)%n].associated); */
-        if(c!=d) {
+        if(c<d || (d==0 && c!=0)) {
             var v0=new THREE.Vector2(gridPointsArray[gridBoundary[i].index].x,gridPointsArray[gridBoundary[i].index].y);
             var v00=new THREE.Vector2(gridPointsArray[gridBoundary[(i+1)%n].index].x,gridPointsArray[gridBoundary[(i+1)%n].index].y);
             var v1=new THREE.Vector2(pointSample[c].x,pointSample[c].y);
@@ -1127,21 +1131,28 @@ function endAssociated2(){
             //var edge=new THREE.Geometry(); 
             
             if(d1>d2){
-                
-              //gridBoundary[i].associated.push(d);   
+              gridBoundary[i].associated.push(d);
+              //gridBoundary[i].associated=gridBoundary[i].associated.sort();
               //edge.vertices.push(gridPointsArray[gridBoundary[i].index],pointSample[d]);    
               //console.log("iadd",i);    
               //console.log(gridBoundary[i].associated);    
             }
             else{
-              //gridBoundary[(i+1)%n].associated.unshift(c);
+              gridBoundary[(i+1)%n].associated.unshift(c);
               //edge.vertices.push(gridPointsArray[gridBoundary[(i+1)%n].index],pointSample[c]);
               //console.log("i+1 add",(i+1)%n);
               //console.log(gridBoundary[(i+1)%n].associated);        
             }
             //var line = new THREE.Line(edge,material);
             //Bgeometry.add(line);  
-        }
+        } 
+        /*else{
+            console.log([c,d]);
+            console.log("iboundary ",i); 
+            console.log("i ",gridI[gridBoundary[i].index]);  
+            console.log("j ",gridBoundary[i].index-(height+1)*gridI[gridBoundary[i].index]);
+            
+        }*/
          
     }
     //setup.scene.add(Bgeometry);
@@ -1179,7 +1190,21 @@ function endAssociated2(){
 function printGridBoundary(){
     for(var i=0;i<gridBoundary.length;i++){
         console.log(gridBoundary[i].associated);
+        console.log(i);
     }
+}
+function printPointG(v){
+     var partt=setup.scene.getObjectByName("auxpointG");
+     if(partt!= undefined){
+        setup.scene.remove(partt);
+        partt={};    
+     }
+     var pointG=new THREE.Geometry();
+     pointG.vertices.push(new THREE.Vector3(v.x,v.y,v.z));
+     var pointM=new THREE.PointsMaterial( {color: 0xE62ECD, size: 10.0, sizeAttenuation: false, alphaTest: 0.5 } );
+     var partt=new THREE.Points(pointG, pointM);
+     partt.name="auxpointG";
+     setup.scene.add(partt);
 }
 function endAssociated3(){
     var n=gridBoundary.length;
