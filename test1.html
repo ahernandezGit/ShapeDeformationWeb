@@ -130,7 +130,7 @@
         var ModeFibermesh=false;
         var ModeCurveDeformation=false;
         var ModeDebug=false;
-        
+        var ModeChangeType=false;
         
         // index in hemesh of  points to edit (ROI)
         var IndexPointToEdit=[];
@@ -234,7 +234,7 @@
         }
         function onMouseUp() {
             if(ModeDrawInitialCurve){
-                 event=d3.event;
+                 //event=d3.event;
                  isDrawing = false;
                  //console.log(points);
                  Resample(points);
@@ -244,23 +244,17 @@
                  GrowingFeed();
                  ptd=MappingVerteToStroke2();
                  console.log(ptd);
-                 drawAssociated();  
-                 if(mode=="fiber"){
-
-                   fixBoundaryPoints(); 
+                 drawAssociated();   
+                 if(mode=="fiber"){ 
+                   fixBoundaryPoints();
                    createInicialMesh();     
                    inflationFunction3();
                    ModeDrawInitialCurve=false;
                    ModeFibermesh=true;
                    OtherMouseControls();     
                  }
-                 else{
+                 else{     
                    drawBoundary(gridBoundary);
-                   for(i=GridMeshVertexArray.length-pointSample.length;i<GridMeshVertexArray.length;i++){
-                       FixedVertex.push(i);
-                   }
-                   ListOfCurves.push([0,FixedVertex.length-1]);
-                   ListOfCurvesGeometry=[];     
                    cancelRender=false;
                    render();    
                  }
@@ -318,6 +312,8 @@
               ModeFibermesh=false;
               ModeCurveDeformation=false;
               ModeDrawInitialCurve=true;
+              ModeDebug=false;
+              ModeChangeType=false;        
               setup.controls.enabled=false;
               ListOfCurves=[];
               ListOfCurvesGeometry=[];
