@@ -154,6 +154,7 @@ Hemesh.prototype.addFace = function(vertices) {
                 //console.log("v1 ",v1);
                 //console.log("v2 ",v2);  
                 return HEMESH_INVALID_IDX;
+                throw "muito ruim";
 			}
 			
 			halfedgesPrev.push(this.halfedgePrev(h));
@@ -555,17 +556,13 @@ Hemesh.prototype.vertexCirculatorPartial = function (f, he) {
 	//var vtx = this.halfedgeVertex(he);
 	var max = 20; // A failsafe for corrupt hds
     var hs=-1;
-    var finish=false;
-    var table=[he];
+    //var table=[he];
 	while (true) {
 		if (f(he) != undefined) break;
         hs=he;
-		he = this.halfedgeSinkCW(he);
-        table.push(he);
-		if (he === start){
-            finish=true;
-            break;  
-        } 
+		he = this.halfedgeSourceCW(he);
+        //table.push(he);
+		if (he === start) break;  
         if (he<0) break;
 		if (max--== 0){
               console.log(hs);
@@ -574,19 +571,19 @@ Hemesh.prototype.vertexCirculatorPartial = function (f, he) {
         } 
 	}
     //console.log("non negative ", table);
-    if(he<0 && !finish){
+    if(he<0){
         he=hs;
-        table=[he];
+        //table=[he];
         max=20;
         while (true) {
             if (f(he) != undefined) break;
-            he = this.halfedgeSinkCCW(he);
-            table.push(he);
+            he = this.halfedgeSourceCCW(he);
+            //table.push(he);
             if (he<0 || he==hs) break;
             if (max--== 0){
               console.log(hs);
               console.log(he);    
-              console.log("negative ", table);
+              //console.log("negative ", table);
               throw "Corrupt hds in vertex circulation negative";  
             } 
 	    }

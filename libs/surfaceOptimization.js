@@ -252,7 +252,7 @@ function FisrtIterationEdgeLength(){
     else{
         var el=spcgnr(First_Ac,b);
     }
-    First_Ac={};
+    //First_Ac={};
     First_AcT={};
     First_invAcTAc={};
     console.log("First edge iteration finish");
@@ -541,11 +541,14 @@ function updateRenderMesh(){
         console.log("sigo esperando para render");
     }
 }
+
+//Class version of the code to manage Surface Optimization 
 function SurfaceOptimization(FV,uniformLaplacian,heStructure){
     this.FixedVertex=FV;
-    this.laplacian=uniformLaplacian; 
-    this.hemesh=heStructure;
+    this.UniformLaplacian=uniformLaplacian; 
+    //this.hemesh=heStructure;
 }
+
 SurfaceOptimization.prototype.meanCurvaturesCurveCotangent=function(v){
     var hs = this.hemesh.vertexHalfedge(v);
     var vetor=new THREE.Vector3(0.0, 0.0, 0.0);  

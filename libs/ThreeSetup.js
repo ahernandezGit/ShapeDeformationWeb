@@ -55,6 +55,7 @@ ThreeSetup.prototype.render = function() {
             var a=intersect.face.a;
             var b=intersect.face.b;
             var c=intersect.face.c;
+            
             for(var i=0;i<ListOfCurves.length;i++){
                 for(var j=ListOfCurves[i][0];j<=ListOfCurves[i][1];j++){
                     if(a==FixedVertex[j]){
@@ -79,17 +80,17 @@ ThreeSetup.prototype.render = function() {
                             var dother=hemesh.positions[other].distanceTo(intersect.point);
                             if(da<dother){
                               whatpoint=a;   
-                              whatindex=j;    
+                              whatindex=j-ListOfCurves[i][0];    
                             }
                             else{
                                 whatpoint=other;
                                 if(other==FixedVertex[j1]){whatindex=j1;}
-                                else{whatindex=jm1;}
+                                else{whatindex=jm1-ListOfCurves[i][0];}
                             }
                         }
                         else{
                             whatpoint=a;
-                            whatindex=j; 
+                            whatindex=j-ListOfCurves[i][0]; 
                         }
                         canvaswindows.style('cursor','pointer');
                         flagIntersectionCurve=true;
@@ -118,17 +119,17 @@ ThreeSetup.prototype.render = function() {
                             var dother=hemesh.positions[other].distanceTo(intersect.point);
                             if(db<dother){
                               whatpoint=b;   
-                              whatindex=j;  
+                              whatindex=j-ListOfCurves[i][0];  
                             }
                             else{
                                 whatpoint=other;
-                                if(other==FixedVertex[j1]){whatindex=j1;}
-                                else{whatindex=jm1;}
+                                if(other==FixedVertex[j1]){whatindex=j1-ListOfCurves[i][0];}
+                                else{whatindex=jm1-ListOfCurves[i][0];}
                             }
                         }
                         else{
                             whatpoint=b;
-                            whatindex=j; 
+                            whatindex=j-ListOfCurves[i][0]; 
                         }
                         canvaswindows.style('cursor','pointer');
                         flagIntersectionCurve=true;
@@ -156,22 +157,23 @@ ThreeSetup.prototype.render = function() {
                             var dother=hemesh.positions[other].distanceTo(intersect.point);
                             if(dc<dother){
                               whatpoint=c;   
-                              whatindex=j; 
+                              whatindex=j-ListOfCurves[i][0]; 
                             }
                             else{
                                 whatpoint=other;
-                                if(other==FixedVertex[j1]){whatindex=j1;}
-                                else{whatindex=jm1;}
+                                if(other==FixedVertex[j1]){whatindex=j1-ListOfCurves[i][0];}
+                                else{whatindex=jm1-ListOfCurves[i][0];}
                             }
                         }
                         else{
                             whatpoint=c;
-                            whatindex=j; 
+                            whatindex=j-ListOfCurves[i][0]; 
                         }
                         canvaswindows.style('cursor','pointer');
                         flagIntersectionCurve=true;
                         break;    
                     }
+                    if(flagIntersectionCurve){break;}
                 }
             }
           
@@ -182,6 +184,7 @@ ThreeSetup.prototype.render = function() {
         
         if(flagIntersectionCurve){
             if(!isDeforming){
+                console.log(whatcurve);
                 ListOfCurvesObject[whatcurve].material.color.set(0xDF7401);
                 pointGeometry.vertices.push(hemesh.positions[whatpoint]);
                 //pointGeometry.vertices.push(intersect.object.geometry.vertices[p2]);
@@ -197,7 +200,7 @@ ThreeSetup.prototype.render = function() {
                 setup.scene.add( particlesC );
                 indexPointToEdit=whatpoint;
                 indexCurvetoEdit=whatcurve;
-                indexPointEditInFixedVertex=whatindex;
+                indexPointEditInCurve=whatindex;
             }
             
         }
@@ -212,7 +215,7 @@ ThreeSetup.prototype.render = function() {
                 }
                 indexPointToEdit=-1;
                 indexCurvetoEdit=-1;
-                indexPointEditInFixedVertex=-1;
+                indexPointEditInCurve=-1;
             }
         }
     }

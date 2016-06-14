@@ -109,7 +109,7 @@ function updateSizeGrid(newVal){
     createGrid(); 
     drawGrid(true);
     GrowingFeed();
-    ptd=MappingVerteToStroke();
+    ptd=MappingVerteToStroke2();
     console.log(ptd); 
     drawAssociated();          
     drawBoundary(gridBoundary);
@@ -942,7 +942,7 @@ function MappingVerteToStroke(){
         var neiborhood=[v0,v1,v2];
 
        // console.log(neiborhoodIndex);
-        var min=point.distance(v0);
+        var min=point.distanceTo(v0);
         var imin=neiborhoodIndex[0];
         var t=0;
         for(var k=1;k<3;k++){

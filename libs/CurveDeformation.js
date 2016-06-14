@@ -12,6 +12,7 @@ function planeToDeforming(normal,x,y,z,v){
 //v:index in hemesh.positions of the handle
 //r: radius of the ROI
 function pathToEdit(r,v,c,ci){
+    console.log("definindo submesh");
     this.useL0=true;
     this.useL0_R=false;
     this.vxyz_rxyz=[];
@@ -32,7 +33,11 @@ function pathToEdit(r,v,c,ci){
     this.fixed=[];
     this.boundary=[];
     this.finalFixed=[];
+    this.lastMeshPositions=[];
+    this.tableHash=[];
+    this.tableHashCurve=[];
     this.stopGrow=false;
+    this.flagStop=false;
     this.A=[];
     this.b=[];
     this.n_laplacians_P=0;
@@ -45,9 +50,15 @@ function pathToEdit(r,v,c,ci){
     this.jp=this.indexInCurve;
     this.geodesiclength=0;
     this.totalfaces=[];
-    this.initialPosition=hemesh.positions[v].clone();
-
+    this.initialPosition=hemesh.positions[this.handle].clone();
+    for(var i=0;i<hemesh.positions.length;i++){
+        this.lastMeshPositions[i]=hemesh.positions[i].clone();
+    }
     this.initializeMesh();
+    //this.computeVertex();
+    //this.updateROIradius();
+  
+    //console.log(this.whatcurve);
     //console.log(this.boundary);
 }
 pathToEdit.prototype.updateRender=function(){
@@ -86,12 +97,16 @@ pathToEdit.prototype.updateRender=function(){
         wireframe.name="wireframeMesh";
         setup.scene.add(wireframe);
         cancelRender=false;
+        
+        //this.rendermesh();
         console.log("update render submesh");
+        this.flagStop=false;
         //render();
     }
     else{
         setTimeout(this.updateRender,500);
         console.log("waiting render submesh");
+        console.log(flaglabx,flaglaby,flaglabz);
     }
 }
 pathToEdit.prototype.initializeMesh=function(){
@@ -178,8 +193,7 @@ pathToEdit.prototype.printCirculator=function(v0,v,v1){
     setup.scene.add(partt1);
     setup.scene.add(partt0);
     console.log(boundary);
-}
-    
+}    
 pathToEdit.prototype.updateBoundary=function (){
     var boundary=[];
     var n=this.boundary.length;
@@ -211,7 +225,26 @@ pathToEdit.prototype.updateBoundary=function (){
     this.newfaces=newfaces;
     //this.totalfaces=this.totalfaces.concat(newfaces);
 }
-pathToEdit.prototype.computeVertex=function (){
+pathToEdit.prototype.updateROIradius=function(){
+    var vector = new THREE.Vector3();
+    vector.set( mouse.x ,mouse.y , 0.5 );
+    vector.unproject( setup.camera);
+    var cameraposition=setup.camera.position.clone();
+    var dir = vector.sub(cameraposition).normalize();
+    var t=plane.point.clone().sub(cameraposition).dot(plane.normal)/dir.dot(plane.normal);
+    var point=cameraposition.add(dir.multiplyScalar(t));
+    var v=this.initialPosition;
+    this.radius=point.clone().distanceTo(v);
+    //console.log(this.radius);
+    this.meshDS.positions[0].set(point.x,point.y,point.z);
+    console.log(this.flagStop);
+ 
+    
+    this.computeVertex();
+    
+}
+pathToEdit.prototype.computeVertex=function(){
+        this.flagStop=true;
         var le=5*this.radius;
         var vertexs=[];
         var center=hemesh.positions[this.handle];
@@ -224,6 +257,7 @@ pathToEdit.prototype.computeVertex=function (){
             var jp0=jp;
             js=js+1;
             jp=jp-1;
+            //console.log(this.whatcurve);
             if(js==ListOfCurves[this.whatcurve][1]+1){
                 js=ListOfCurves[this.whatcurve][0];
             }
@@ -245,7 +279,7 @@ pathToEdit.prototype.computeVertex=function (){
             }   
         }
         //console.log("le",le);
-        //console.log(totaldistance);
+        console.log("comp vertex");
         this.geodesiclength=totaldistance;
         this.js=js;
         this.jp=jp;
@@ -277,8 +311,11 @@ pathToEdit.prototype.computeVertex=function (){
                 //compute new boundary
                 this.updateBoundary();
                 console.log("level1");
+                this.rendermesh();
+                this.flagStop=false;
+                console.log(this.flagStop);
             } 
-            else {
+            else{
                    console.log(this.level);
                    var k=this.meshDS.positions.length;
                    for(var i=0;i<this.boundary.length;i++){
@@ -292,47 +329,56 @@ pathToEdit.prototype.computeVertex=function (){
             
                     //compute new boundary
                     this.updateBoundary();
-                    
+                    this.rendermesh();
                     console.log("fora");
+                var mesh=setup.scene.getObjectByName("mesh");
+        var wireframeMesh=setup.scene.getObjectByName("wireframeMesh");
+        
+        //meshROI.geometry.verticesNeedUpdate = true;
+        mesh.geometry.verticesNeedUpdate = true;
+                    //this.computeDeforming2();
             }
-               
-                var meshscene=setup.scene.getObjectByName("meshROI");
-                if(meshscene!=undefined){
-                   setup.scene.remove(meshscene);       
-                   meshscene={};    
-                }
-                var ff=[]; 
-                for(var i=0;i<this.totalfaces.length;i++){
-                   var facess=hemesh.faceVertices(this.totalfaces[i]);
-                   ff.push([this.tableHash[facess[0].toString()],this.tableHash[facess[1].toString()],this.tableHash[facess[2].toString()]]);
-                }
-                this.meshDS.addFaces(ff);
-                //console.log(ff);
-                
-                meshscene=new THREE.Mesh(this.meshDS.toGeometry(), new THREE.MeshBasicMaterial({
-                    color: 0xE8D120,
-                    side:  THREE.DoubleSide
-                }));
-                meshscene.name="meshROI";
-                setup.scene.add(meshscene);
-                var pointGeometry = new THREE.Geometry();
-                for(var i=0;i<this.boundary.length;i++){
-                    pointGeometry.vertices.push(hemesh.positions[this.boundary[i]].clone());    
-                }
-                var pointmaterial = new THREE.PointsMaterial( {color: 0x27B327, size: 10.0, sizeAttenuation: false, alphaTest: 0.5 } );
-                var particle=setup.scene.getObjectByName("pruebapar");
-                if(particle!=undefined){
-                    setup.scene.remove(particle);       
-                    particle={}
-                }
-                particle=new THREE.Points(pointGeometry, pointmaterial);
-                particle.name="pruebapar";
-                setup.scene.add(particle);
-                //this.updatelaplacians();
-                //this.computeDeforming();
-                if(this.level>1) this.computeDeforming2();
-                //this.updateDeforming();
-            }
+            
+            //this.updatelaplacians();
+            //this.computeDeforming();
+            //this.updateDeforming();
+    }
+}
+pathToEdit.prototype.rendermesh=function (){
+    var meshscene=setup.scene.getObjectByName("meshROI");
+    if(meshscene!=undefined){
+       setup.scene.remove(meshscene);       
+       meshscene={};    
+    }
+    var ff=[]; 
+    for(var i=0;i<this.totalfaces.length;i++){
+       var facess=hemesh.faceVertices(this.totalfaces[i]);
+       ff.push([this.tableHash[facess[0].toString()],this.tableHash[facess[1].toString()],this.tableHash[facess[2].toString()]]);
+    }
+    this.meshDS.addFaces(ff);
+    //this.lastMeshPositions=this.meshDS.positions.slice();
+    
+    //console.log(ff);
+
+    meshscene=new THREE.Mesh(this.meshDS.toGeometry(), new THREE.MeshBasicMaterial({
+        color: 0xE8D120,
+        side:  THREE.DoubleSide
+    }));
+    meshscene.name="meshROI";
+    setup.scene.add(meshscene);
+    var pointGeometry = new THREE.Geometry();
+    for(var i=0;i<this.boundary.length;i++){
+        pointGeometry.vertices.push(hemesh.positions[this.boundary[i]]);    
+    }
+    var pointmaterial = new THREE.PointsMaterial( {color: 0x27B327, size: 10.0, sizeAttenuation: false, alphaTest: 0.5 } );
+    var particle=setup.scene.getObjectByName("pruebapar");
+    if(particle!=undefined){
+        setup.scene.remove(particle);       
+        particle={}
+    }
+    particle=new THREE.Points(pointGeometry, pointmaterial);
+    particle.name="pruebapar";
+    setup.scene.add(particle);
 }
 pathToEdit.prototype.setradius=function(nr){
        this.radius=nr;
@@ -340,28 +386,7 @@ pathToEdit.prototype.setradius=function(nr){
        //console.log(this.freevertex);
        //console.log(this.fixed);
 }    
-pathToEdit.prototype.updateROIradius=function(){
-    var vector = new THREE.Vector3();
-    vector.set( mouse.x ,mouse.y , 0.5 );
-    vector.unproject( setup.camera);
-    var cameraposition=setup.camera.position.clone();
-    var dir = vector.sub(cameraposition).normalize();
-    var t=plane.point.clone().sub(cameraposition).dot(plane.normal)/dir.dot(plane.normal);
-    var point=cameraposition.add(dir.multiplyScalar(t));
-    this.radius=point.clone().distanceTo(this.initialPosition);
-    this.meshDS.positions[this.tableHash[this.handle.toString()]].set(point.x,point.y,point.z);
-    /*var mesh=setup.scene.getObjectByName("mesh");
 
-    var wireframe=setup.scene.getObjectByName("wireframe");
-        mesh.geometry.verticesNeedUpdate = true;
-        if(wireframe!=undefined){
-        setup.scene.remove(wireframe);}
-      */  
-        //cancelRender=false;
-        //render();
-    this.computeVertex();
-    //console.log(this.radius);
-}
 pathToEdit.prototype.updatelaplacians=function(){
     var n=this.meshDS.positions.length;
     //var L0=zeros(n-1,n);
@@ -768,20 +793,26 @@ pathToEdit.prototype.computeDeforming2= function(){
     //compute vertex of the curve to deform
     var n=0;
     var IndexVertices=[];
+    //var tableHashSubmesh=[];
     var _vertices=[];
     var i=this.jp;
     while(i!=this.js && n<500){   
         if(i==ListOfCurves[this.whatcurve][1]+1){
             i=ListOfCurves[this.whatcurve][0];
         }
-        IndexVertices.push(this.tableHash[FixedVertex[i].toString()]);
-        _vertices.push(this.meshDS.positions[this.tableHash[FixedVertex[i].toString()]]);
+        var indexInSubmesh=this.tableHash[FixedVertex[i].toString()];
+        IndexVertices.push(indexInSubmesh);
+        _vertices.push(this.meshDS.positions[indexInSubmesh]);
+       // tableHashSubmesh[indexInSubmesh.toString()]=n;
         n++;
         i++;
     }
-    IndexVertices.push(this.tableHash[FixedVertex[this.js].toString()]);
+    //IndexVertices.push(this.tableHash[FixedVertex[this.js].toString()]);
     _vertices.push(this.meshDS.positions[this.tableHash[FixedVertex[this.js].toString()]]);
+    //tableHashSubmesh[this.tableHash[FixedVertex[this.js].toString()].toString()]=n;
     this.IndexVertices=IndexVertices;
+    //this.tableHashCurve=tableHashSubmesh;
+    console.log(this.IndexVertices);
     n++;
     console.log(n,IndexVertices.length);
     //computing edges of the curve to deform (index from _vertices)
@@ -790,15 +821,19 @@ pathToEdit.prototype.computeDeforming2= function(){
         edges.push([i,i+1]);
     }
     this.edges=edges;
+    console.log(this.edges);
     //computing fixed vertices (index in IndexVertices)
     //var fixedVertices=[];
     this.fixedVertices[0]=0;
     this.fixedVertices[1]=IndexVertices.length-1;
     this.fixedVertices[2]=IndexVertices.indexOf(this.tableHash[this.handle.toString()]);
+    console.log(this.fixedVertices);
     //computing fixed edges
     var FixedEdges=[];
     FixedEdges[0]=edges[0];
     FixedEdges[1]=edges[edges.length-1];
+    console.log(FixedEdges);
+    
     //Defining one rotation for each edge
     this.R=[];
     for(var i=0;i<edges.length;i++){
@@ -807,9 +842,10 @@ pathToEdit.prototype.computeDeforming2= function(){
     //Defining fixed rotations (index in FixedEdges) 
     var FixedRotation=[];
     FixedRotation[0]=0;
-    FixedRotation[0]=edges.length-1;
+    FixedRotation[1]=edges.length-1;
     
     this.FixedRotation=FixedRotation;
+    console.log(this.FixedRotation);
     
     //computing triplets of vertex for computing uniform laplacian 
     var VertexTriplets=[];
@@ -817,14 +853,17 @@ pathToEdit.prototype.computeDeforming2= function(){
     for(var i=0;i<IndexVertices.length-2;i++){
         VertexTriplets.push([i,i+1,i+2]);
     }
+    console.log(VertexTriplets);
     for(var i = 0; i < VertexTriplets.length; i++){
         var v0 = _vertices[VertexTriplets[i][0]].clone();
         var v1 = _vertices[VertexTriplets[i][1]].clone();
         var v2 = _vertices[VertexTriplets[i][2]].clone();
-        var mid= v0.clone().add(v2).multiplyScalar(0.5);
+        var mid= v0.clone().add(v2);
+        mid.multiplyScalar(0.5);
         this.original_laplacians_L1.push(v1.sub(mid));
         VertexTripletsIndexR.push([i,i+1]);
     }
+    console.log(VertexTripletsIndexR);
     
     //computing triplets of edges for compute difference of rotations 
     var EdgeTriplets=[];
@@ -832,6 +871,7 @@ pathToEdit.prototype.computeDeforming2= function(){
         EdgeTriplets.push([i,i+1,i+2]);
     }
     this.EdgeTriplets=EdgeTriplets;
+    console.log(this.EdgeTriplets);
     
     //Working with L0 for compute rotations
     // defining as laplacians as edges
@@ -842,6 +882,8 @@ pathToEdit.prototype.computeDeforming2= function(){
     for(var i = 0; i < this.n_laplacians_P; i++){
         this.original_laplacians_P.push(_vertices[edges[i][1]].clone().sub(_vertices[edges[i][0]]));
     }
+    console.log(this.original_laplacians_P);
+    
     this.A=zeros(this.n_laplacians_P * 3 + this.n_laplacians_R * 9 + this.fixedVertices.length * 3 + this.FixedRotation.length * 3,this.IndexVertices.length * 3 + this.R.length * 3);
     this.b=zeros(this.n_laplacians_P * 3 + this.n_laplacians_R * 9 + this.fixedVertices.length * 3 + this.FixedRotation.length * 3);
     // computing rotations
@@ -869,7 +911,7 @@ pathToEdit.prototype.computeDeforming2= function(){
         var r0= this.R[VertexTripletsIndexR[i][0]];
         var r1= this.R[VertexTripletsIndexR[i][1]];
         var r = this.averageRotation(r0, r1);
-        var l1=mat([this.original_laplacians_L1[i].x,this.original_laplacians_L1[i].y,this.original_laplacians_L1[i].z]);
+        var l1=mat(this.original_laplacians_L1[i].toArray());
         var rotated_laplacian = mulMatrixVector(r,l1);
         bx[i] = rotated_laplacian[0];
         by[i] = rotated_laplacian[1];
@@ -905,7 +947,7 @@ pathToEdit.prototype.computeDeforming2= function(){
           }
           //console.log(result[0]);
           flaglabx=true;
-          console.log(flaglabx);
+          //console.log(flaglabx);
           labx.close();
     });	
     laby.getObject("vy", function ( result ) { // recover the value of a variable from the lab
@@ -914,7 +956,7 @@ pathToEdit.prototype.computeDeforming2= function(){
         }
         //console.log(result[0]);
         flaglaby=true;
-        console.log(flaglaby);
+        //console.log(flaglaby);
         laby.close();
     });
     labz.getObject("vz", function ( result ) { // recover the value of a variable from the lab
@@ -923,9 +965,10 @@ pathToEdit.prototype.computeDeforming2= function(){
         }
         //console.log(result[0]);
         flaglabz=true;
-        console.log(flaglabz);
+        //console.log(flaglabz);
         labz.close();
     });
+    
     this.updateRender();
 }
 pathToEdit.prototype.updateAB=function(){
@@ -955,7 +998,7 @@ pathToEdit.prototype.updateAB=function(){
             this.A.val[(i * 3 + 2)*col+this.IndexVertices.length * 3 + (i + 0) * 3 + 0] = -l0[1];
             this.A.val[(i * 3 + 2)*col+this.IndexVertices.length * 3 + (i + 0) * 3 + 1] = l0[0];
             this.A.val[(i * 3 + 2)*col+this.IndexVertices.length * 3 + (i + 0) * 3 + 2] = 0;
-            this.b[(i * 3 + 2)] = l0[2];this.n_laplacians_R * 9
+            this.b[i * 3 + 2] = l0[2];
     }
     for(var i = 0; i < this.n_laplacians_R; i++){
             var e0 = this.EdgeTriplets[i][0];
@@ -1033,4 +1076,31 @@ pathToEdit.prototype.averageRotation=function(r0,r1){
         }
     }
     return r;
+}
+pathToEdit.prototype.computeDeforming3= function(){
+    //compute vertex of the curve to deform
+    var n=0;
+    var IndexVertices=[];
+    //var tableHashSubmesh=[];
+    var _vertices=[];
+    var i=this.jp;
+    while(i!=this.js && n<500){   
+        if(i==ListOfCurves[this.whatcurve][1]+1){
+            i=ListOfCurves[this.whatcurve][0];
+        }
+        var indexInSubmesh=this.tableHash[FixedVertex[i].toString()];
+        IndexVertices.push(indexInSubmesh);
+        _vertices.push(this.meshDS.positions[indexInSubmesh]);
+       // tableHashSubmesh[indexInSubmesh.toString()]=n;
+        n++;
+        i++;
+    }
+    //IndexVertices.push(this.tableHash[FixedVertex[this.js].toString()]);
+    _vertices.push(this.meshDS.positions[this.tableHash[FixedVertex[this.js].toString()]]);
+    //tableHashSubmesh[this.tableHash[FixedVertex[this.js].toString()].toString()]=n;
+    this.IndexVertices=IndexVertices;
+    //this.tableHashCurve=tableHashSubmesh;
+    console.log(this.IndexVertices);
+    n++;
+    
 }

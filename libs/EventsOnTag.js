@@ -65,7 +65,7 @@ function inflationFunction3(){
         t++;
     }
     setTimeout(updateRenderMesh,500);
-    Ac={};
+    //Ac={};
     AcT={};
     invAcTAc={};
 }
@@ -120,11 +120,13 @@ function createInicialMesh() {
     }
     gridgeometry={};    
     ListOfCurvesGeometry.push(new THREE.Geometry());
-    for(var i=ListOfCurves[0][0];i<ListOfCurves[0][1];i++){
-        ListOfCurvesGeometry[0].vertices.push(hemesh.positions[FixedVertex[i]],hemesh.positions[FixedVertex[i+1]]);
+    for(var i=ListOfCurves[0][0];i<=ListOfCurves[0][1];i++){
+        ListOfCurvesGeometry[0].vertices.push(hemesh.positions[FixedVertex[i]]);
     }
-    ListOfCurvesGeometry[0].vertices.push(hemesh.positions[FixedVertex[ListOfCurves[0][0]]],hemesh.positions[FixedVertex[ListOfCurves[0][1]]]);
-    ListOfCurvesObject[0]=new THREE.LineSegments(ListOfCurvesGeometry[0], materialSample);
+    ListOfCurvesGeometry[0].vertices.push(hemesh.positions[FixedVertex[ListOfCurves[0][0]]]);
+    //ListOfCurvesGeometry[0].vertices=LineSample.geometry.vertices.slice();
+    //ListOfCurvesObject[0]=new THREE.LineSegments(ListOfCurvesGeometry[0], materialSample);
+    ListOfCurvesObject[0]=new THREE.Line(ListOfCurvesGeometry[0], materialSample);
     setup.scene.remove(LineSample);
     setup.scene.add(ListOfCurvesObject[0]);
     setup.scene.add(mesh,wireframe);
@@ -320,7 +322,9 @@ d3.select("#uploadButton").on("click",function(){
    console.log(loadFileAsText());    
    //hemesh.fromOBJ(loadFileAsText());
 });
-
+d3.select("#backButton").on("click",function(){
+   pathCurve.goLast();
+});
 d3.select("#radioSBS").on("click",function(){
    document.getElementById("buttonsSBS").style.display="block"; 
    document.getElementById("buttonsFiber").style.display="none"; 
