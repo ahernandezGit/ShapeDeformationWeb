@@ -40,7 +40,8 @@
      <script src="libs/numeric-1.2.6.js"></script>
      <script src="libs/victor.min.js"></script> 
       -->
-    <script src="libs/CurveDeformation.js"></script>     
+    <script src="libs/CurveDeformation2.js"></script>   
+    <script src="libs/3DCurveDeform.js"></script>   
     <script  type="application/x-javascript" src="libs/lalolib/lalolib.js"></script>
     <script src="libs/d3.min.js"></script>
     <script src="libs/doubly-linked-list.js"></script>    
@@ -56,16 +57,13 @@
         <div id="buttonsSBS" class="stepbystep">
             <p>
             <label><input type="checkbox" id="checkGrid">Grid</label><br/>        
-            <label><input type="checkbox" id="checkMesh">Mesh </label><br/>  
-            <label><input type="checkbox" id="checkMeshROI">ROI </label><br/>  
             <button id="opButton">Optimize Boundary </button>
             <button id="fixButton"> Fix Boundary </button>       
             <button id="inflationButton">Inflation </button>
             <button id="assoButton">Associated</button>
             <button id="meshButton">Mesh Inicial</button>     
             <button id="drawButton">Draw</button>    
-            <button id="clearButton">Clear </button>
-            <button id="finishButton">Finish</button>    
+            <button id="clearButton">Clear </button>   
             <button id="uploadButton">Upload</button>
             <button id="exportButton">Export</button>
             <input type="file" id="fileToLoad" >
@@ -73,11 +71,15 @@
         </div>
         <input type="radio" name="gender" id="radioFibermesh"> Fibermesh mode <br/>  
         <div id="buttonsFiber" class="stepbystep">
+            <label><input type="checkbox" id="checkMesh">Mesh </label><br/>  
+            <label><input type="checkbox" id="checkMeshROI">ROI </label><br/>  
             <p>
             <button id="cdButton">EditCurve</button>
             <button id="cdButton">AddCurve</button>    
             <button id="changeButton">ChangeType</button>
             <button id="startButton">Start</button>
+            <button id="backButton">Back</button>
+            <button id="finishButton">Finish</button> 
             </p>
         </div>
         </div>
@@ -145,9 +147,11 @@
         //index in a LineSample curve
         var indexPointToEdit=-1;
         var indexCurvetoEdit=-1;
-        var indexPointEditInFixedVertex=-1;
+        var indexPointEditInCurve=-1;
         //var accelerationMouse=0;
         var submesh={};
+        var arrayPathCurve=[];
+        var pathCurve={};
         var plane=new planeToDeforming(setup.camera.getWorldDirection(),0,0,0);
         function mousePosition2D(event){
               var mouse=new THREE.Vector2();
@@ -195,7 +199,7 @@
                 CurrentPoint=mousePosition3D(event);
                 if(!isDeforming) return;
                 //console.log(submesh);
-                submesh.updateROIradius();
+                pathCurve.updateRadius();
                 //mouseLast2D.set(mouseCurrent2D.x,mouseCurrent2D.y);
                 //LastPoint=CurrentPoint;
             }
@@ -224,11 +228,9 @@
                      
                      //computing parallel plane where translate the vector
                      plane=new planeToDeforming(setup.camera.getWorldDirection(),pointToEdit.x,pointToEdit.y,pointToEdit.z,indexPointToEdit);
-                    
-                     //setup.scene.add(sphereMouse);
-                     submesh= new pathToEdit(radiusROI,indexPointToEdit,indexCurvetoEdit,indexPointEditInFixedVertex);
-                     //submesh.updateRender();
-                     //console.log(submesh);
+                     
+                     pathCurve=new curveSymmetricSegment(indexPointEditInCurve,ListOfCurvesGeometry[indexCurvetoEdit].vertices.slice(0,-1),indexCurvetoEdit);
+                     //arrayPathCurve=[];
                  }
             }
         }
@@ -260,6 +262,7 @@
                  }
             }
             if(ModeCurveDeformation){
+                pathCurve.doDeform.renderMesh();
                 isDeforming=false;
                 radiusROI=sizeGrid/2;
                 /*var wireframeLines = hemesh.toWireframeGeometry();
@@ -271,9 +274,7 @@
                 wireframe.name="wireframe";
                 setup.scene.add(wireframe);*/
                 startButtonF();
-                if(submesh!=undefined && submesh.flagdifution==false && indexPointToEdit!=-1){
-                    inflationFunction3();
-                }
+                
                 //var meshROI=setup.scene.getObjectByName("meshROI");
                 //var particlepar=setup.scene.getObjectByName("pruebapar");
                 //setup.scene.remove(meshROI);
