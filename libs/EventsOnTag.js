@@ -18,29 +18,179 @@ function fixBoundaryPoints() {
           else{
               fixBoundaryPoints();
           }
+          setTimeout(fixBoundaryPoints,1);
           //cancelRender=false;
           //render();
           //setTimeout(cancelAnimation,4000);
       }
       else{
+         for(var i=GridMeshVertexArray.length-pointSample.length;i<GridMeshVertexArray.length;i++){
+               FixedVertex.push(i);
+               if(i<0){
+                   console.log("problem in the curve ");
+                   FixedVertex=[];
+                   break;
+               }
+         }
+         ListOfCurves.push([0,FixedVertex.length-1]);
+         ListOfCurvesGeometry=[];  
          console.log("ptd zero");
       }
  }
 function inflationFunction3(){
+     
     L=uniformLaplacian();
+
+    FirstMatrixtoProcessCurvatureEdgeLength();
+    matrixtoProcessCurvatureEdgeLength();
+    
     var ci=FisrtIterationCurvaturesProcess();
+    //console.log(ci);
     var el=FisrtIterationEdgeLength();
-    var etaij=computeEdgeVector();
+    //console.log(el);
+    var etaij=computeEdgeVector(el);
     var laplacian=computeIntegratedLaplacian(ci);
-    IterationUpdateVector(laplacian,etaij);
-    
+ 
+    IterationUpdateVector(laplacian,etaij);    
+    var t=0;
+    while(t<2){
+        var cid=IterationCurvaturesProcess(ci);
+        var eld=IterationEdgeLength(el);
+   
+        var etaijd=computeEdgeVector(eld);
+        var laplaciand=computeIntegratedLaplacian(cid);
+        IterationUpdateVector(laplaciand,etaijd);
+        ci=cid;
+        el=computeAverageEdgeLength();
+        t++;
+    }
+    setTimeout(updateRenderMesh,500);
+    //Ac={};
+    AcT={};
+    invAcTAc={};
 }
-function createInicialMesh() {
+
+function oneStepSurfaceoptimization(laplacianArray){
+     var n=L.n;
+    //var fL=full(L);
+    var el=computeAverageEdgeLength();
+    var total = 0;
+    for(var i = 0; i < el.length; i++) {
+        total += el[i];
+    }
+    var avg = total / el.length
+    //var cid=IterationCurvaturesProcess(ci);
+    var eld=IterationEdgeLength(mulScalarVector(avg,ones(el.length)));
+    var etaarray=computeEdgeVector(eld);
+    var lx=zeros(n);
+    var ly=zeros(n);
+    var lz=zeros(n);
+    for(var i=0;i<n;i++){
+        lx[i]=hemesh.positions[i].x;
+        ly[i]=hemesh.positions[i].y;
+        lz[i]=hemesh.positions[i].z;
+    }
+    lx=mulspMatrixVector(L,lx);
+    ly=mulspMatrixVector(L,ly);
+    lz=mulspMatrixVector(L,lz);
+    var m=etaarray.length;
+    var r=FixedVertex.length;
+    var A=zeros(n+r+m,n);
+    var b=zeros(n+r+m,3);
+    var ri = 0;
+    for(var i=0;i<n;i++){
+        var s = L.rows[i];
+        var e = L.rows[i+1];
+        for ( var k=s; k < e; k++) {
+            A.val[ri + L.cols[k] ] = L.val[k];
+        }
+        ri += n; 
+        b.val[3*i]=lx[i];
+        b.val[3*i+1]=ly[i];
+        b.val[3*i+2]=lz[i];
+    }
+    var web=100.0;
+    for(var i=n;i<n+r;i++){
+        // 100.0 for fixed vertices
+        b.val[3*i]=web*hemesh.positions[FixedVertex[i-n]].x;
+        b.val[3*i+1]=web*hemesh.positions[FixedVertex[i-n]].y;
+        b.val[3*i+2]=web*hemesh.positions[FixedVertex[i-n]].z;
+        
+        // 100.0 for fixed vertices
+        
+        A.val[i*A.n+FixedVertex[i-n]]=web;
+        
+    }
+     // 0.01 for vertices in the B subset
+    var wel=0.01;
+    for(var i=n+r;i<n+r+m;i++){
+        b.val[3*i]=wel*etaarray[i-n-r].vector.x;
+        b.val[3*i+1]=wel*etaarray[i-n-r].vector.y;
+        b.val[3*i+2]=wel*etaarray[i-n-r].vector.z;
+        A.val[i*A.n+etaarray[i-n-r].i]=wel;
+        A.val[i*A.n+etaarray[i-n-r].j]=-wel;
+    }
+    var bx=getCols(b,[0]);
+    var by=getCols(b,[1]);
+    var bz=getCols(b,[2]);
+    var spA=sparse(A);
+   
+   
+    var labx = new Lalolab("laloxname",false,"libs/lalolib") ; 
+    var laby = new Lalolab("laloyname",false,"libs/lalolib") ; 
+    var labz = new Lalolab("lalozname",false,"libs/lalolib") ; 
+    labx.load(spA, "spA");
+    laby.load(spA, "spA");
+    labz.load(spA, "spA");
+    labx.load(bx, "bx");
+    laby.load(by, "by");
+    labz.load(bz, "bz");
+    labx.exec("vx=spcgnr(spA,bx)");	
+    laby.exec("vy=spcgnr(spA,by)");	
+    labz.exec("vz=spcgnr(spA,bz)");
     
-  
+    flaglabx=false;
+    flaglaby=false;
+    flaglabz=false;
+    labx.getObject("vx", function ( result ) { // recover the value of a variable from the lab
+          for (var i=0;i<n;i++){
+              hemesh.positions[i].setX(result[i]);
+          }
+          //console.log(result[0]);
+          flaglabx=true;
+          //console.log(flaglabx);
+          labx.close();
+    });	
+    laby.getObject("vy", function ( result ) { // recover the value of a variable from the lab
+        for (var i=0;i<n;i++){
+              hemesh.positions[i].setY(result[i]);
+        }
+        //console.log(result[0]);
+        flaglaby=true;
+        //console.log(flaglaby);
+        laby.close();
+    });
+    labz.getObject("vz", function ( result ) { // recover the value of a variable from the lab
+        for (var i=0;i<n;i++){
+              hemesh.positions[i].setZ(result[i]);
+        }
+        //console.log(result[0]);
+        flaglabz=true;
+        //console.log(flaglabz);
+        labz.close();
+    });
+    console.log("update positions finish");
+    setTimeout(updateRenderMesh,100);
+}
+
+function createInicialMesh() {
+    if(ModeDrawInitialCurve){
+        fixBoundaryPoints();
+    }  
     var FacesVertices=createMesh2(); 
+    hemesh=new Hemesh();
     hemesh.fromFaceVertexArray(FacesVertices[0],FacesVertices[1]); 
-    hemesh.normalize();
+    //hemesh.normalize();
     var wireframeLines = hemesh.toWireframeGeometry();
    // wireframeLines.faces=FacesVertices[0];
     
@@ -50,11 +200,12 @@ function createInicialMesh() {
         color:  0xd9d9d9,
         polygonOffset: true,
         polygonOffsetFactor: 1,
-        side:  THREE.DoubleSide,   
+        side:  THREE.DoubleSide, 
+        vertexColors: THREE.FaceColors,
         polygonOffsetUnits: 0.1
     }));
  
-     var wireframe = new THREE.LineSegments(wireframeLines, new THREE.LineBasicMaterial({
+    var wireframe = new THREE.LineSegments(wireframeLines, new THREE.LineBasicMaterial({
         color: 0xff2222,
         opacity: 0.2,
         transparent: true,
@@ -65,8 +216,9 @@ function createInicialMesh() {
     var debuglines=setup.scene.getObjectByName("DebugPoints");
     var debuglines2=setup.scene.getObjectByName("DebugPointsb");
     
-    wireframe.name="wireframe";
+    wireframe.name="wireframeMesh";
     mesh.name="mesh";
+    
     if(Linesam!=undefined ){
         Linesam.children=[];
     }
@@ -80,352 +232,126 @@ function createInicialMesh() {
        setup.scene.remove(debuglines2);
     }
     gridgeometry={};    
-     
-    setup.scene.add(mesh,wireframe);
-     
-}
-function inflationFuntion2() {
-    var r=pointSample.length;
-    var n=gridBoundary.length;
-    var interiorPointsNumber=GridMeshVertexArray.length;
-    var FixedVertexPositions=[];
-    var VertexInteriores=toThreeVector3(GridMeshVertexArray); 
-    var FacesVertices=createMesh(GridMeshFacesArray,offsetZ(VertexInteriores,parseFloat(sizeGrid)),offsetZ(VertexInteriores,-sizeGrid)); 
-    var m=FacesVertices[1].length;
-    //hemesh.fromFaceVertexArray(FacesVertices[0],FacesVertices[1]); 
-    var AllVertex=FacesVertices[1].slice();
-    var AllFaces=FacesVertices[0].slice();
-    for(var i=0;i<r;i++){
-         //hemesh.addVertex(pointSample[i]);
-         FixedVertexPositions.push(pointSample[i])
-         FixedVertex.push(m+i);
+    ListOfCurvesGeometry.push(new THREE.Geometry());
+    for(var i=ListOfCurves[0][0];i<=ListOfCurves[0][1];i++){
+        ListOfCurvesGeometry[0].vertices.push(hemesh.positions[FixedVertex[i]]);
     }
-    AllVertex=AllVertex.concat(FixedVertexPositions);
-    //hemesh.fromFaceVertexArray(AllFaces,AllVertex); 
-    //compute faces
-    var associated=[];
-    var i0=0;
-    for(var i=0;i<n;i++){
-        if(gridBoundary[i].associated.indexOf(0)==-1){
-            i0=i;
-            break;
-        }
-    }
-    for(var j=0;j<r;j++){
-        var aux=searchAssociated(i0,j);
-        associated.push(aux);
-        i0=aux[aux.length-1];
-    }
-    //console.log(associated);
-    //here add border faces 
-    /*
-    for(var j=1;j<r-1;j++){
-         var pinitial=m+j-1;
-         var pend=m+j+1;
-         var le=associated[j].length;
-         //console.log(associated[j]);
-         //console.log([m+j,TableHashIndextoPosition[gridBoundary[associated[j][0]].index.toString()],pinitial]);
-         //hemesh.addFace([m+j,pend,TableHashIndextoPosition[gridBoundary[associated[j][le-1]].index.toString()]]);
-         //AllFaces.push([m+j,pend,TableHashIndextoPosition[gridBoundary[associated[j][le-1]].index.toString()]]);
-         //AllFaces.push([m+j,TableHashIndextoPosition[gridBoundary[associated[j][le-1]].index.toString()],pend]);
-         for(var k=1;k<associated[j].length;k++){
-             var id=gridBoundary[associated[j][k]].index;    
-             var id0=TableHashIndextoPosition[id.toString()];
-             var id0mirror=interiorPointsNumber+id0;
-             var pid=gridBoundary[associated[j][k-1]].index;    
-             var pid0=TableHashIndextoPosition[pid.toString()];
-             var pid0mirror=interiorPointsNumber+pid0;       
-             AllFaces.push([m+j,id0,pid0]);
-             //AllFaces.push([m+j,id0mirror,pid0mirror]);
-             //console.log([m+j,id0,pid0]);
-             //console.log(pinitial);
-             //hemesh.addFace([m+j,id0,pid0]);
-         }
-         /*if(le==1){
-             AllFaces.push([m+j,TableHashIndextoPosition[gridBoundary[associated[j][0]].index.toString()],pend]);
-             var newo=(interiorPointsNumber+TableHashIndextoPosition[gridBoundary[associated[j][0]].index.toString()]);
-             //AllFaces.push([pend,m+j,newo]);
-             //AllFaces.push([pinitial,m+j,TableHashIndextoPosition[gridBoundary[associated[j][0]].index.toString()]]);
-             //AllFaces.push([m+j,pinitial,interiorPointsNumber+TableHashIndextoPosition[gridBoundary[associated[j][0]].index.toString()]]);
-         }
-    }*/
-    for(var j=0;j<r-1;j=j+2){
-         var pinitial=m+((j-1+r)%r);
-         var pend=m+j+1;
-         var le=associated[j].length;
-         //console.log(Orientation(pointSample[0],pointSample[1],pointSample[2]));
-         var d0=pointSample[(j-1+r)%r].clone().sub(gridPointsArray[gridBoundary[associated[j][0]].index]).length();
-         var d1=pointSample[(j-1+r)%r].clone().sub(gridPointsArray[gridBoundary[associated[j][le-1]].index]).length();
-         if(d0<d1){
-             AllFaces.push([pinitial,TableHashIndextoPosition[gridBoundary[associated[j][0]].index.toString()],m+j]);
-             AllFaces.push([m+j,TableHashIndextoPosition[gridBoundary[associated[j][le-1]].index.toString()],pend]);
-             AllFaces.push([m+j,interiorPointsNumber+TableHashIndextoPosition[gridBoundary[associated[j][0]].index.toString()],pinitial]);
-             AllFaces.push([pend,interiorPointsNumber+TableHashIndextoPosition[gridBoundary[associated[j][le-1]].index.toString()],m+j]);
-         }
-         else{
-             AllFaces.push([pinitial,TableHashIndextoPosition[gridBoundary[associated[j][le-1]].index.toString()],m+j]);
-             AllFaces.push([m+j,TableHashIndextoPosition[gridBoundary[associated[j][0]].index.toString()],pend]);
-             AllFaces.push([m+j,interiorPointsNumber+TableHashIndextoPosition[gridBoundary[associated[j][le-1]].index.toString()],pinitial]);
-             AllFaces.push([pend,interiorPointsNumber+TableHashIndextoPosition[gridBoundary[associated[j][0]].index.toString()],m+j]);
-         }
-    }
-    
-    
-    for(var j=0;j<r;j++){
-         var d0=pointSample[(j-1+r)%r].clone().sub(gridPointsArray[gridBoundary[associated[j][0]].index]).length();
-         var d1=pointSample[(j-1+r)%r].clone().sub(gridPointsArray[gridBoundary[associated[j][associated[j].length-1]].index]).length();
-         if(d0<d1){
-             for(var k=0;k<associated[j].length-1;k++){
-                 var id=gridBoundary[associated[j][k]].index;    
-                 var id0=TableHashIndextoPosition[id.toString()];
-                 var id0mirror=interiorPointsNumber+id0;
-                 var pid=gridBoundary[associated[j][k+1]].index;    
-                 var pid0=TableHashIndextoPosition[pid.toString()];
-                 var pid0mirror=interiorPointsNumber+pid0;       
-
-
-                AllFaces.push([m+j,id0,pid0]);    
-
-
-                 //AllFaces.push([m+j,id0mirror,pid0mirror]);
-                 //console.log([m+j,id0,pid0]);
-                 //console.log(pinitial);
-                 //hemesh.addFace([m+j,id0,pid0]);
-             }
-         }
-         else{
-             for(var k=associated[j].length-1;k>0;k=k-1){
-                 var id=gridBoundary[associated[j][k]].index;    
-                 var id0=TableHashIndextoPosition[id.toString()];
-                 var id0mirror=interiorPointsNumber+id0;
-                 var pid=gridBoundary[associated[j][k-1]].index;    
-                 var pid0=TableHashIndextoPosition[pid.toString()];
-                 var pid0mirror=interiorPointsNumber+pid0;       
-
-
-                AllFaces.push([m+j,id0,pid0]);    
-
-
-                 //AllFaces.push([m+j,id0mirror,pid0mirror]);
-                 //console.log([m+j,id0,pid0]);
-                 //console.log(pinitial);
-                 //hemesh.addFace([m+j,id0,pid0]);
-             }
-         }
-    }
-    hemesh.fromFaceVertexArray(AllFaces,AllVertex); 
-    var wireframeLines = hemesh.toWireframeGeometry();
-     
-    var geo = hemesh.toGeometry();
-    
-    var mesh = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({
-        color:  0xd9d9d9,
-        polygonOffset: true,
-        polygonOffsetFactor: 1,
-        side:  THREE.DoubleSide,   
-        polygonOffsetUnits: 0.1
-    }));
- 
-     var wireframe = new THREE.Line(wireframeLines, new THREE.LineBasicMaterial({
-        color: 0xff2222,
-        opacity: 0.2,
-        transparent: true,
-    }), THREE.LineSegments);
-    setup.scene.remove(gridgeometry);
-    var Linesam=setup.scene.getObjectByName("LineBoundary");
-    var borderl=setup.scene.getObjectByName("borderLine"); 
-    var debuglines=setup.scene.getObjectByName("DebugPoints");
-    var debuglines2=setup.scene.getObjectByName("DebugPointsb");
-    if(Linesam!=undefined ){
-        Linesam.children=[];
-    }
-    if(borderl!=undefined ){
-        borderl.children=[];
-    }
-    if(debuglines!=undefined ){
-       setup.scene.remove(debuglines);
-    }
-    if(debuglines2!=undefined ){
-       setup.scene.remove(debuglines2);
-    }
-    gridgeometry={};
-    
-    //L=uniformLaplacian();
-    //var prova=FisrtIterationCurvaturesProcess();
-    //var prov2=IterationCurvaturesProcess(prova);
-    //var meancurvatures=FirstCurvaturesCurve();
-    //console.log(meancurvatures.length);
-    //console.log(r);
-    //var lapla=uniformLaplacian();
-    //console.log(lapla);
-    //console.log(hemesh.positions.length-r);
-    
-     
-     setup.scene.add(mesh,wireframe);
-    
-}
-function inflationFuntion() {
-    // Create the halfedge mesh from an OBJ
-    var r=pointSample.length;
-    var n=gridBoundary.length;
-    var interiorPointsNumber=GridMeshVertexArray.length;
-    var FixedVertexPositions=[];
-    var VertexInteriores=toThreeVector3(GridMeshVertexArray); 
-    var FacesVertices=createMesh(GridMeshFacesArray,offsetZ(VertexInteriores,parseFloat(sizeGrid)),offsetZ(VertexInteriores,-sizeGrid)); 
-    hemesh.fromFaceVertexArray(FacesVertices[0],FacesVertices[1]); 
-    var AllVertex=FacesVertices[1].slice();
-    var AllFaces=FacesVertices[0].slice();
-    for(var i=0;i<r;i++){
-         hemesh.addVertex(pointSample[i]);
-         FixedVertexPositions.push(pointSample[i])
-         FixedVertex.push(FacesVertices[1].length+i);
-    }
-    AllVertex=AllVertex.concat(FixedVertexPositions);
-    console.log(AllVertex.length,2*interiorPointsNumber+r);
-    for(var i=0;i<n;i++){
-         var m=FacesVertices[1].length;
-         var j=gridBoundary[i].associated.length;
-         var id=gridBoundary[i].index;    
-         var id0=TableHashIndextoPosition[id.toString()];
-         var id0mirror=interiorPointsNumber+id0;    
-         var sid=gridBoundary[(i+1)%n].index;    
-         var sid0=TableHashIndextoPosition[sid.toString()];
-         var sid0mirror=interiorPointsNumber+sid0;
-         var copyAssociated=gridBoundary[i].associated.slice();
-         //console.log(copyAssociated);
-         //console.log(i);
-         copyAssociated.sort(function(a, b){return a-b});   
-         if(j>1){
-            for(var k=0;k<j-1;k++){
-               if(copyAssociated.indexOf(0)==-1){
-                  var id1=m+copyAssociated[k]; 
-                  var id2=m+copyAssociated[k+1];             
-               }    
-               else{
-                  var id1=m+gridBoundary[i].associated[k]; 
-                  var id2=m+gridBoundary[i].associated[k+1];             
-               }
-               //hemesh.addFace([id0,id1,id2]);
-               //hemesh.addFace([id0mirror,id2,id1]);
-               hemesh.addFaces([[id0,id1,id2],[id0mirror,id2,id1]]);
-               //AllFaces.push([id0,id1,id2]);
-               //AllFaces.push([id0mirror,id2,id1]);    
-               //console.log("normais");
-               //console.log("i ",i);    
-               //console.log([id0,id1,id2],[id0mirror,id2,id1]);    
-            }
-         }
-         else{
-               var id3=m+gridBoundary[i].associated[0];
-               var pid=gridBoundary[(i-1+n)%n].index;    
-               var pid0=TableHashIndextoPosition[pid.toString()];
-               var pid0mirror=interiorPointsNumber+pid0;    
-               /*console.log("log");
-               console.log("i=",i);
-               console.log("associated",gridBoundary[i].associated);
-               console.log("m=",m);
-               console.log("ido=",id0);
-               console.log("sdo=",sid0);
-               console.log("pdo=",pid0);
-               console.log("id3=",id3);*/
-               hemesh.addFaces([[pid0,id3,id0],[id0,id3,sid0],[id0mirror,id3,pid0mirror],[sid0mirror,id3,id0mirror]]);
-               //AllFaces.push([pid0,id3,id0]);
-               //AllFaces.push([id0,id3,sid0]);
-               //AllFaces.push([id0mirror,id3,pid0mirror]);
-               //AllFaces.push([sid0mirror,id3,id0mirror]);
-         } 
-         
-    }
-    for(var i=0;i<n;i++){
-         var j=gridBoundary[i].associated.length;
-         var k=gridBoundary[(i+1)%n].associated.length;
-         var m=FacesVertices[1].length;
-         var AssociatedJ=gridBoundary[i].associated;
-         var AssociatedK=gridBoundary[(i+1)%n].associated;
-         var id=gridBoundary[i].index;    
-         var id0=TableHashIndextoPosition[id.toString()];
-         var id0mirror=interiorPointsNumber+id0;    
-         var sid=gridBoundary[(i+1)%n].index;    
-         var sid0=TableHashIndextoPosition[sid.toString()];
-         var sid0mirror=interiorPointsNumber+sid0;
-         if(j>1 && k>1){
-               var id4;
-               for(var p=0;p<j;p++){
-                   if(AssociatedK.indexOf(AssociatedJ[p])!=-1){
-                       id4=m+AssociatedJ[p];
-                       break;
-                   }
-               } 
-               //hemesh.addFaces([[id0,id4,sid0],[sid0mirror,id4,id0mirror]]);    
-               //AllFaces.push([id0,id4,sid0]);
-               //AllFaces.push([sid0mirror,id4,id0mirror]);
-       }
-    }
-    //hemesh.fromFaceVertexArray(AllFaces,AllVertex); 
-    var wireframeLines = hemesh.toWireframeGeometry();
-     
-    var geo = hemesh.toGeometry();
-    
-    var mesh = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({
-        color:  0xd9d9d9,
-        polygonOffset: true,
-        polygonOffsetFactor: 1,
-        side:  THREE.DoubleSide,   
-        polygonOffsetUnits: 0.1
-    }));
- 
-     var wireframe = new THREE.Line(wireframeLines, new THREE.LineBasicMaterial({
-        color: 0xff2222,
-        opacity: 0.2,
-        transparent: true,
-    }), THREE.LineSegments);
-    setup.scene.remove(gridgeometry);
-    var Linesam=setup.scene.getObjectByName("LineBoundary");
-    var borderl=setup.scene.getObjectByName("borderLine"); 
-    var debuglines=setup.scene.getObjectByName("DebugPoints");
-    var debuglines2=setup.scene.getObjectByName("DebugPointsb");
-    if(Linesam!=undefined ){
-        Linesam.children=[];
-    }
-    if(borderl!=undefined ){
-        borderl.children=[];
-    }
-    if(debuglines!=undefined ){
-       setup.scene.remove(debuglines);
-    }
-    if(debuglines2!=undefined ){
-       setup.scene.remove(debuglines2);
-    }
-    gridgeometry={};
+    ListOfCurvesGeometry[0].vertices.push(hemesh.positions[FixedVertex[ListOfCurves[0][0]]]);
+    //ListOfCurvesGeometry[0].vertices=LineSample.geometry.vertices.slice();
+    //ListOfCurvesObject[0]=new THREE.LineSegments(ListOfCurvesGeometry[0], materialSample);
+    ListOfCurvesObject[0]=new THREE.Line(ListOfCurvesGeometry[0], materialSample);
     setup.scene.remove(LineSample);
-    L=uniformLaplacian();
-    //var prova=FisrtIterationCurvaturesProcess();
-    //var prov2=IterationCurvaturesProcess(prova);
-    //var meancurvatures=FirstCurvaturesCurve();
-    //console.log(meancurvatures.length);
-    //console.log(r);
-    //var lapla=uniformLaplacian();
-    //console.log(lapla);
-    //console.log(hemesh.positions.length-r);
-    
-     
-     setup.scene.add(mesh);
- }
+    setup.scene.add(ListOfCurvesObject[0]);
+    setup.scene.add(mesh,wireframe);
+    //GridMeshVertexArray=[];
+    //GridMeshFacesArray=[];
+    //TableHashIndextoPosition=[];
+}
 function OtherMouseControls() {
-     
      points=[];
      console.log(points);
-     canvaswindows.on("mousedown",null);
-     canvaswindows.on("mouseup",null);
-     canvaswindows.on("mousemove",null);
+     //canvaswindows.on("mousedown",null);
+     ///canvaswindows.on("mouseup",null);
+     //canvaswindows.on("mousemove",null);
      setup.controls.enabled=true;
+     ModeCurveDeformation=false;     
+     ModeFibermesh=true;
+     ModeDrawInitialCurve=false;
+     ModeDebug=false;
+     ModeChangeType=false;
+    
      cancelRender=false;
      render();
-     //canvaswindows.removeEventListener('click', onMouseClick);
-     //window.addEventListener( 'mousemove', onMouseMove, false );
 }
+
+function saveTextAsFile(textToWrite){
+	var textFileAsBlob = new Blob([textToWrite], {type:'text/plain'});
+	var fileNameToSaveAs = "mesh";
+
+	var downloadLink = document.createElement("a");
+	downloadLink.download = fileNameToSaveAs;
+	downloadLink.innerHTML = "Download File";
+	if (window.URL != null )
+	{
+		// Chrome allows the link to be clicked
+		// without actually adding it to the DOM.
+		downloadLink.href = window.URL.createObjectURL(textFileAsBlob);
+	}
+	else{
+		// Firefox requires the link to be added to the DOM
+		// before it can be clicked.
+		downloadLink.href = window.URL.createObjectURL(textFileAsBlob);
+		downloadLink.onclick = destroyClickedElement;
+		downloadLink.style.display = "none";
+		document.body.appendChild(downloadLink);
+	}
+
+	downloadLink.click();
+}
+
+function destroyClickedElement(event){
+	document.body.removeChild(event.target);
+}
+
+function loadFileAsText(){
+	var fileToLoad = document.getElementById("fileToLoad").files[0];
+
+	var fileReader = new FileReader();
+    var text="";
+	fileReader.onload = function(fileLoadedEvent) 
+	{
+        text = String(fileReader.result);
+        hemesh=new Hemesh();
+        hemesh.fromOBJ(text); 
+        var wireframeLines = hemesh.toWireframeGeometry();
+       // wireframeLines.faces=FacesVertices[0];
+
+        var geo = hemesh.toGeometry();
+
+        var mesh = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({
+            color:  0xd9d9d9,
+            polygonOffset: true,
+            polygonOffsetFactor: 1,
+            side:  THREE.DoubleSide,   
+            polygonOffsetUnits: 0.1
+        }));
+
+         var wireframe = new THREE.LineSegments(wireframeLines, new THREE.LineBasicMaterial({
+            color: 0xff2222,
+            opacity: 0.2,
+            transparent: true,
+        }));
+        setup.scene.remove(gridgeometry);
+        var Linesam=setup.scene.getObjectByName("LineBoundary");
+        var borderl=setup.scene.getObjectByName("borderLine"); 
+        var debuglines=setup.scene.getObjectByName("DebugPoints");
+        var debuglines2=setup.scene.getObjectByName("DebugPointsb");
+
+        wireframe.name="wireframe";
+        mesh.name="mesh";
+
+        if(Linesam!=undefined ){
+            Linesam.children=[];
+        }
+        if(borderl!=undefined ){
+            borderl.children=[];
+        }
+        if(debuglines!=undefined ){
+           setup.scene.remove(debuglines);
+        }
+        if(debuglines2!=undefined ){
+           setup.scene.remove(debuglines2);
+        }
+        gridgeometry={};    
+
+        setup.scene.add(mesh,wireframe);
+
+        };
+        fileReader.readAsText(fileToLoad);
+}
+
 d3.select('#finishButton').on('click',OtherMouseControls);
- d3.select('#opButton').on('click',function () {
+d3.select('#opButton').on('click',function () {
     var Linesam=setup.scene.getObjectByName("LineBoundary");
     var borderl=setup.scene.getObjectByName("borderLine"); 
     if(Linesam!=undefined ){
@@ -452,6 +378,8 @@ d3.select('#finishButton').on('click',OtherMouseControls);
  });
  d3.select('#inflationButton').on('click',function(){
      inflationFunction3();
+     ModeDrawInitialCurve=false;
+     ModeFibermesh=true;
  });
  d3.select('#meshButton').on('click',function(){
      createInicialMesh();
@@ -479,19 +407,78 @@ d3.select("#checkGrid").on("click",function(){
        drawGrid(false);     
    }
 });
+d3.select("#checkMesh").on("click",function(){
+   if(checkMesh.checked){
+       drawMesh(true);
+   }    
+   else{
+       drawMesh(false);     
+   }
+});
+d3.select("#checkMeshROI").on("click",function(){
+   if(checkMeshROI.checked){
+       drawMeshROI(true);
+   }    
+   else{
+       drawMeshROI(false);     
+   }
+});
+d3.select("#exportButton").on("click",function(){
+   if(hemesh.positions.length!=0){
+       var stringmesh=hemesh.toOBJ();
+       saveTextAsFile(stringmesh);
+   }    
+   
+});
+d3.select("#uploadButton").on("click",function(){
+   hemesh=new Hemesh();    
+   console.log(loadFileAsText());    
+   //hemesh.fromOBJ(loadFileAsText());
+});
+d3.select("#backButton").on("click",function(){
+   pathCurve.goLast();
+});
 d3.select("#radioSBS").on("click",function(){
    document.getElementById("buttonsSBS").style.display="block"; 
+   document.getElementById("buttonsFiber").style.display="none"; 
    mode="sbs";
 });
 d3.select("#radioFibermesh").on("click",function(){
    console.log("fibermesh");
    document.getElementById("buttonsSBS").style.display="none"; 
+   document.getElementById("buttonsFiber").style.display="block"; 
    mode="fiber";
    if(points.length!=0){    
        fixBoundaryPoints(); 
-       //drawBoundary(gridBoundary);
-       inflationFuntion();    
-       //OtherMouseControls();    
+       createInicialMesh();
+       inflationFunction3();    
+       ModeDrawInitialCurve=false;
+       ModeFibermesh=true;
+       OtherMouseControls();    
    } 
    //setTimeout(cancelAnimation,1000);     
 });
+d3.select("#fileToLoad").on("change",loadFileAsText);
+
+d3.select("#cdButton").on("click",function(){
+     setup.controls.enabled=false;
+     ModeCurveDeformation=true;     
+     ModeFibermesh=false;
+     ModeDrawInitialCurve=false;
+     ModeDebug=false;
+     //canvaswindows.on("mousedown",null);
+     //canvaswindows.on("mouseup",null);
+     //canvaswindows.on("mousemove",null);
+     
+});
+d3.select("#startButton").on("click",startButtonF);
+d3.select("#inflationStepButton").on("click",oneStepSurfaceoptimization);
+function startButtonF(){
+     setup.controls.enabled=true;
+     canvaswindows.style('cursor','default');
+     ListOfCurvesObject[0].material.color.set(0x0015FF);
+     ModeCurveDeformation=false;     
+     ModeFibermesh=true;
+     ModeDrawInitialCurve=false;
+     ModeDebug=false;
+}
