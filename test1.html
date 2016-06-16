@@ -60,6 +60,7 @@
             <button id="opButton">Optimize Boundary </button>
             <button id="fixButton"> Fix Boundary </button>       
             <button id="inflationButton">Inflation </button>
+            <button id="inflationStepButton">1Step Inflation</button>
             <button id="assoButton">Associated</button>
             <button id="meshButton">Mesh Inicial</button>     
             <button id="drawButton">Draw</button>    
@@ -262,7 +263,9 @@
                  }
             }
             if(ModeCurveDeformation){
-                pathCurve.doDeform.renderMesh();
+                if(!isDeforming) return;
+                pathCurve.updatePositions();
+                setTimeout(updateRenderMesh,100);
                 isDeforming=false;
                 radiusROI=sizeGrid/2;
                 /*var wireframeLines = hemesh.toWireframeGeometry();
