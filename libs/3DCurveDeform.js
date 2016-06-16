@@ -16,6 +16,17 @@ function curveSymmetricSegment(center,curveVertices,wc){
     for(var i=0;i<hemesh.positions.length;i++){
         this.lastarray.push(hemesh.positions[i].clone());
     }
+    this.OXLaplacian=zeros(hemesh.positions.length);
+    this.OYLaplacian=zeros(hemesh.positions.length);
+    this.OZLaplacian=zeros(hemesh.positions.length);
+    for(var i=0;i<hemesh.positions.length;i++){
+        this.OXLaplacian[i]=this.lastarray[i].x;
+        this.OYLaplacian[i]=this.lastarray[i].y;
+        this.OZLaplacian[i]=this.lastarray[i].z;
+    }
+    this.OXLaplacian=mulspMatrixVector(L,this.OXLaplacian);
+    this.OYLaplacian=mulspMatrixVector(L,this.OYLaplacian);
+    this.OZLaplacian=mulspMatrixVector(L,this.OZLaplacian);
     //this.updateRadius;
     //this.computeLevel;
 }
@@ -60,7 +71,7 @@ curveSymmetricSegment.prototype.computeLevel=function (){
            this.doDeform=new deformed3(this.arrayVertices,this.center,this.curveVertices,ListOfCurvesObject[this.whatcurve]);
            this.level=level;  
            console.log(level);     
-           console.log(this.arrayVertices);
+           //console.log(this.arrayVertices);
         }
         else{
            this.doDeform.updateVertices3();    
@@ -97,6 +108,100 @@ curveSymmetricSegment.prototype.goLast=function(){
     wireframe.name="wireframeMesh";
     setup.scene.add(wireframe);
 }
+curveSymmetricSegment.prototype.updatePositions=function(){
+    var n=L.n;
+    //var fL=full(L);
+    var el=computeAverageEdgeLength();
+    var etaarray=computeEdgeVector(el);
+    var m=etaarray.length;
+    var r=FixedVertex.length;
+    var A=zeros(n+r+m,n);
+    var b=zeros(n+r+m,3);
+    var ri = 0;
+    for(var i=0;i<n;i++){
+        var s = L.rows[i];
+        var e = L.rows[i+1];
+        for ( var k=s; k < e; k++) {
+            A.val[ri + L.cols[k] ] = L.val[k];
+        }
+        ri += n; 
+        b.val[3*i]=this.OXLaplacian[i];
+        b.val[3*i+1]=this.OYLaplacian[i];
+        b.val[3*i+2]=this.OZLaplacian[i];
+    }
+    var web=100.0;
+    for(var i=n;i<n+r;i++){
+        // 100.0 for fixed vertices
+        b.val[3*i]=web*hemesh.positions[FixedVertex[i-n]].x;
+        b.val[3*i+1]=web*hemesh.positions[FixedVertex[i-n]].y;
+        b.val[3*i+2]=web*hemesh.positions[FixedVertex[i-n]].z;
+        
+        // 100.0 for fixed vertices
+        
+        A.val[i*A.n+FixedVertex[i-n]]=web;
+        
+    }
+     // 0.01 for vertices in the B subset
+    var wel=0.01;
+    for(var i=n+r;i<n+r+m;i++){
+        b.val[3*i]=wel*etaarray[i-n-r].vector.x;
+        b.val[3*i+1]=wel*etaarray[i-n-r].vector.y;
+        b.val[3*i+2]=wel*etaarray[i-n-r].vector.z;
+        A.val[i*A.n+etaarray[i-n-r].i]=wel;
+        A.val[i*A.n+etaarray[i-n-r].j]=-wel;
+    }
+    var bx=getCols(b,[0]);
+    var by=getCols(b,[1]);
+    var bz=getCols(b,[2]);
+    var spA=sparse(A);
+   
+   
+    var labx = new Lalolab("laloxname",false,"libs/lalolib") ; 
+    var laby = new Lalolab("laloyname",false,"libs/lalolib") ; 
+    var labz = new Lalolab("lalozname",false,"libs/lalolib") ; 
+    labx.load(spA, "spA");
+    laby.load(spA, "spA");
+    labz.load(spA, "spA");
+    labx.load(bx, "bx");
+    laby.load(by, "by");
+    labz.load(bz, "bz");
+    labx.exec("vx=spcgnr(spA,bx)");	
+    laby.exec("vy=spcgnr(spA,by)");	
+    labz.exec("vz=spcgnr(spA,bz)");
+    
+    flaglabx=false;
+    flaglaby=false;
+    flaglabz=false;
+    labx.getObject("vx", function ( result ) { // recover the value of a variable from the lab
+          for (var i=0;i<n;i++){
+              hemesh.positions[i].setX(result[i]);
+          }
+          //console.log(result[0]);
+          flaglabx=true;
+          //console.log(flaglabx);
+          labx.close();
+    });	
+    laby.getObject("vy", function ( result ) { // recover the value of a variable from the lab
+        for (var i=0;i<n;i++){
+              hemesh.positions[i].setY(result[i]);
+        }
+        //console.log(result[0]);
+        flaglaby=true;
+        //console.log(flaglaby);
+        laby.close();
+    });
+    labz.getObject("vz", function ( result ) { // recover the value of a variable from the lab
+        for (var i=0;i<n;i++){
+              hemesh.positions[i].setZ(result[i]);
+        }
+        //console.log(result[0]);
+        flaglabz=true;
+        //console.log(flaglabz);
+        labz.close();
+    });
+    console.log("update positions finish");
+}
+
 function deformed3(array,handle,curveVertex,curveObject){
     this.indexvertices=array;
     this.handle=handle;
@@ -306,20 +411,4 @@ deformed3.prototype.updateVertices3=function(){
     //FirstMatrixtoProcessCurvatureEdgeLength();
 }
 
-deformed3.prototype.renderMesh=function(){
-    var ci=FisrtIterationCurvaturesProcess();
-    var el=FisrtIterationEdgeLength();
-    //IterationUpdateVector(laplaciand,etaijd);
-    var t=0;
-    while(t<2){
-        var cid=IterationCurvaturesProcess(ci);
-        var eld=IterationEdgeLength(el);
-        var etaijd=computeEdgeVector(eld);
-        var laplaciand=computeIntegratedLaplacian(cid);
-        IterationUpdateVector(laplaciand,etaijd);
-        ci=cid;
-        el=computeAverageEdgeLength();
-        t++;
-    }
-    setTimeout(updateRenderMesh,100);
-}
+

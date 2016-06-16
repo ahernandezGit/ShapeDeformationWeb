@@ -70,6 +70,119 @@ function inflationFunction3(){
     invAcTAc={};
 }
 
+function oneStepSurfaceoptimization(laplacianArray){
+     var n=L.n;
+    //var fL=full(L);
+    var el=computeAverageEdgeLength();
+    var total = 0;
+    for(var i = 0; i < el.length; i++) {
+        total += el[i];
+    }
+    var avg = total / el.length
+    //var cid=IterationCurvaturesProcess(ci);
+    var eld=IterationEdgeLength(mulScalarVector(avg,ones(el.length)));
+    var etaarray=computeEdgeVector(eld);
+    var lx=zeros(n);
+    var ly=zeros(n);
+    var lz=zeros(n);
+    for(var i=0;i<n;i++){
+        lx[i]=hemesh.positions[i].x;
+        ly[i]=hemesh.positions[i].y;
+        lz[i]=hemesh.positions[i].z;
+    }
+    lx=mulspMatrixVector(L,lx);
+    ly=mulspMatrixVector(L,ly);
+    lz=mulspMatrixVector(L,lz);
+    var m=etaarray.length;
+    var r=FixedVertex.length;
+    var A=zeros(n+r+m,n);
+    var b=zeros(n+r+m,3);
+    var ri = 0;
+    for(var i=0;i<n;i++){
+        var s = L.rows[i];
+        var e = L.rows[i+1];
+        for ( var k=s; k < e; k++) {
+            A.val[ri + L.cols[k] ] = L.val[k];
+        }
+        ri += n; 
+        b.val[3*i]=lx[i];
+        b.val[3*i+1]=ly[i];
+        b.val[3*i+2]=lz[i];
+    }
+    var web=100.0;
+    for(var i=n;i<n+r;i++){
+        // 100.0 for fixed vertices
+        b.val[3*i]=web*hemesh.positions[FixedVertex[i-n]].x;
+        b.val[3*i+1]=web*hemesh.positions[FixedVertex[i-n]].y;
+        b.val[3*i+2]=web*hemesh.positions[FixedVertex[i-n]].z;
+        
+        // 100.0 for fixed vertices
+        
+        A.val[i*A.n+FixedVertex[i-n]]=web;
+        
+    }
+     // 0.01 for vertices in the B subset
+    var wel=0.01;
+    for(var i=n+r;i<n+r+m;i++){
+        b.val[3*i]=wel*etaarray[i-n-r].vector.x;
+        b.val[3*i+1]=wel*etaarray[i-n-r].vector.y;
+        b.val[3*i+2]=wel*etaarray[i-n-r].vector.z;
+        A.val[i*A.n+etaarray[i-n-r].i]=wel;
+        A.val[i*A.n+etaarray[i-n-r].j]=-wel;
+    }
+    var bx=getCols(b,[0]);
+    var by=getCols(b,[1]);
+    var bz=getCols(b,[2]);
+    var spA=sparse(A);
+   
+   
+    var labx = new Lalolab("laloxname",false,"libs/lalolib") ; 
+    var laby = new Lalolab("laloyname",false,"libs/lalolib") ; 
+    var labz = new Lalolab("lalozname",false,"libs/lalolib") ; 
+    labx.load(spA, "spA");
+    laby.load(spA, "spA");
+    labz.load(spA, "spA");
+    labx.load(bx, "bx");
+    laby.load(by, "by");
+    labz.load(bz, "bz");
+    labx.exec("vx=spcgnr(spA,bx)");	
+    laby.exec("vy=spcgnr(spA,by)");	
+    labz.exec("vz=spcgnr(spA,bz)");
+    
+    flaglabx=false;
+    flaglaby=false;
+    flaglabz=false;
+    labx.getObject("vx", function ( result ) { // recover the value of a variable from the lab
+          for (var i=0;i<n;i++){
+              hemesh.positions[i].setX(result[i]);
+          }
+          //console.log(result[0]);
+          flaglabx=true;
+          //console.log(flaglabx);
+          labx.close();
+    });	
+    laby.getObject("vy", function ( result ) { // recover the value of a variable from the lab
+        for (var i=0;i<n;i++){
+              hemesh.positions[i].setY(result[i]);
+        }
+        //console.log(result[0]);
+        flaglaby=true;
+        //console.log(flaglaby);
+        laby.close();
+    });
+    labz.getObject("vz", function ( result ) { // recover the value of a variable from the lab
+        for (var i=0;i<n;i++){
+              hemesh.positions[i].setZ(result[i]);
+        }
+        //console.log(result[0]);
+        flaglabz=true;
+        //console.log(flaglabz);
+        labz.close();
+    });
+    console.log("update positions finish");
+    setTimeout(updateRenderMesh,100);
+}
+
 function createInicialMesh() {
     if(ModeDrawInitialCurve){
         fixBoundaryPoints();
@@ -359,6 +472,7 @@ d3.select("#cdButton").on("click",function(){
      
 });
 d3.select("#startButton").on("click",startButtonF);
+d3.select("#inflationStepButton").on("click",oneStepSurfaceoptimization);
 function startButtonF(){
      setup.controls.enabled=true;
      canvaswindows.style('cursor','default');
