@@ -39,8 +39,9 @@
       <script src="http://mlweb.loria.fr/lalolibworker.js"></script>
      <script src="libs/numeric-1.2.6.js"></script>
      <script src="libs/victor.min.js"></script> 
+     <script src="libs/CurveDeformation2.js"></script>   
       -->
-    <script src="libs/CurveDeformation2.js"></script>   
+    
     <script src="libs/3DCurveDeform.js"></script>   
     <script  type="application/x-javascript" src="libs/lalolib/lalolib.js"></script>
     <script src="libs/d3.min.js"></script>
@@ -76,7 +77,7 @@
             <label><input type="checkbox" id="checkMeshROI">ROI </label><br/>  
             <p>
             <button id="cdButton">EditCurve</button>
-            <button id="cdButton">AddCurve</button>    
+            <button id="addButton">AddCurve</button>    
             <button id="changeButton">ChangeType</button>
             <button id="startButton">Start</button>
             <button id="backButton">Back</button>
@@ -134,9 +135,8 @@
         var ModeCurveDeformation=false;
         var ModeDebug=false;
         var ModeChangeType=false;
-        
+        var ModeAddCurve=false;
         // index in hemesh of  points to edit (ROI)
-        var IndexPointToEdit=[];
         var flagIntersectionCurve=false;
         var isDeforming=false;
         var mouseLast2D=new THREE.Vector2();
@@ -150,10 +150,15 @@
         var indexCurvetoEdit=-1;
         var indexPointEditInCurve=-1;
         //var accelerationMouse=0;
-        var submesh={};
         var arrayPathCurve=[];
         var pathCurve={};
         var plane=new planeToDeforming(setup.camera.getWorldDirection(),0,0,0);
+        
+        //for adding curve to the mesh
+        var flagIntersectionMesh=false;
+        var faceArrayOfNewCurve=[];
+        
+        var isAddingCurve=false;
         function mousePosition2D(event){
               var mouse=new THREE.Vector2();
               mouse.x = ( event.clientX / window.innerWidth ) * 2 - 1;
@@ -194,15 +199,15 @@
                 //setup.scene.add( line );
             }
             if(ModeCurveDeformation){
-                //var newpos=mousePosition2D(event);
-                //mouseCurrent2D.set(event.clientX,event.clientY);
-                //mouse.set(newpos.x,newpos.y);
                 CurrentPoint=mousePosition3D(event);
                 if(!isDeforming) return;
-                //console.log(submesh);
                 pathCurve.updateRadius();
-                //mouseLast2D.set(mouseCurrent2D.x,mouseCurrent2D.y);
-                //LastPoint=CurrentPoint;
+            }
+            if(ModeAddCurve){
+                CurrentPoint=mousePosition3D(event);
+                if(!isAddingCurve) return;
+                //console.log(isAddingCurve);
+                //console.log(faceArrayOfNewCurve);
             }
         }
         function onMouseDown(){
@@ -219,13 +224,8 @@
                  if(flagIntersectionCurve){
                      isDeforming=true;
                      LastPoint=mousePosition3D(event);
-                     //var newpos=mousePosition2D(event);
-                     //mouseLast2D.set(event.clientX,event.clientY);
-                     //mouse.set(newpos.x,newpos.y);
-                     //updateROI();
-                     //sphereMouse.scale.set(4,4,4);
+                   
                      var pointToEdit=hemesh.positions[indexPointToEdit];
-                     //console.log(indexPointToEdit);
                      
                      //computing parallel plane where translate the vector
                      plane=new planeToDeforming(setup.camera.getWorldDirection(),pointToEdit.x,pointToEdit.y,pointToEdit.z,indexPointToEdit);
@@ -233,6 +233,12 @@
                      pathCurve=new curveSymmetricSegment(indexPointEditInCurve,ListOfCurvesGeometry[indexCurvetoEdit].vertices.slice(0,-1),indexCurvetoEdit);
                      //arrayPathCurve=[];
                  }
+            }
+            if(ModeAddCurve){
+                //if(flagIntersectionMesh){
+                    isAddingCurve=true;
+                    LastPoint=mousePosition3D(event);
+                //}
             }
         }
         function onMouseUp() {
@@ -268,21 +274,13 @@
                 setTimeout(updateRenderMesh,100);
                 isDeforming=false;
                 radiusROI=sizeGrid/2;
-                /*var wireframeLines = hemesh.toWireframeGeometry();
-                var wireframe = new THREE.LineSegments(wireframeLines, new THREE.LineBasicMaterial({
-                    color: 0xff2222,
-                    opacity: 0.2,
-                    transparent: true,
-                }));
-                wireframe.name="wireframe";
-                setup.scene.add(wireframe);*/
                 startButtonF();
-                
-                //var meshROI=setup.scene.getObjectByName("meshROI");
-                //var particlepar=setup.scene.getObjectByName("pruebapar");
-                //setup.scene.remove(meshROI);
-                //setup.scene.remove(particlepar);
-                //meshROI={};
+            }
+            if(ModeAddCurve){
+                if(!isAddingCurve) return;
+                isAddingCurve=false;
+                faceArrayOfNewCurve=[];
+                startButtonF();
             }
         }
         
@@ -308,6 +306,15 @@
               TableHashIndextoPosition=[];
               FixedVertex=[];
               cancelRender=false;
+              radiusROI=sizeGrid/2;
+              flagIntersectionCurve=false;
+              indexPointToEdit=-1;
+              indexCurvetoEdit=-1;
+              indexPointEditInCurve=-1;
+              isDeforming=false;
+              isAddingCurve=false;
+              arrayPathCurve=[];
+              pathCurve={};
               if(ModeFibermesh){
                   //setup.camera=new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 1, 1000);
                   setup.controls.reset();
@@ -317,7 +324,9 @@
               ModeCurveDeformation=false;
               ModeDrawInitialCurve=true;
               ModeDebug=false;
-              ModeChangeType=false;        
+              ModeChangeType=false;   
+              ModeAddCurve=false;
+            
               setup.controls.enabled=false;
               ListOfCurves=[];
               ListOfCurvesGeometry=[];
