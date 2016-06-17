@@ -65,7 +65,7 @@ function inflationFunction3(){
         t++;
     }
     setTimeout(updateRenderMesh,500);
-    //Ac={};
+    Ac={};
     AcT={};
     invAcTAc={};
 }
@@ -204,7 +204,7 @@ function createInicialMesh() {
         vertexColors: THREE.FaceColors,
         polygonOffsetUnits: 0.1
     }));
- 
+    //mesh.geometry.dynamic = true;
     var wireframe = new THREE.LineSegments(wireframeLines, new THREE.LineBasicMaterial({
         color: 0xff2222,
         opacity: 0.2,
@@ -243,9 +243,9 @@ function createInicialMesh() {
     setup.scene.remove(LineSample);
     setup.scene.add(ListOfCurvesObject[0]);
     setup.scene.add(mesh,wireframe);
-    //GridMeshVertexArray=[];
-    //GridMeshFacesArray=[];
-    //TableHashIndextoPosition=[];
+    GridMeshVertexArray=[];
+    GridMeshFacesArray=[];
+    TableHashIndextoPosition=[];
 }
 function OtherMouseControls() {
      points=[];
@@ -259,7 +259,7 @@ function OtherMouseControls() {
      ModeDrawInitialCurve=false;
      ModeDebug=false;
      ModeChangeType=false;
-    
+     ModeAddCurve=false;
      cancelRender=false;
      render();
 }
@@ -466,6 +466,19 @@ d3.select("#cdButton").on("click",function(){
      ModeFibermesh=false;
      ModeDrawInitialCurve=false;
      ModeDebug=false;
+     ModeAddCurve=false;
+     //canvaswindows.on("mousedown",null);
+     //canvaswindows.on("mouseup",null);
+     //canvaswindows.on("mousemove",null);
+     
+});
+d3.select("#addButton").on("click",function(){
+     setup.controls.enabled=false;
+     ModeCurveDeformation=false;     
+     ModeFibermesh=false;
+     ModeDrawInitialCurve=false;
+     ModeDebug=false;
+     ModeAddCurve=true;
      //canvaswindows.on("mousedown",null);
      //canvaswindows.on("mouseup",null);
      //canvaswindows.on("mousemove",null);
@@ -476,9 +489,10 @@ d3.select("#inflationStepButton").on("click",oneStepSurfaceoptimization);
 function startButtonF(){
      setup.controls.enabled=true;
      canvaswindows.style('cursor','default');
-     ListOfCurvesObject[0].material.color.set(0x0015FF);
+     if(ModeCurveDeformation) ListOfCurvesObject[0].material.color.set(0x0015FF);
      ModeCurveDeformation=false;     
      ModeFibermesh=true;
      ModeDrawInitialCurve=false;
      ModeDebug=false;
+     ModeAddCurve=false;
 }

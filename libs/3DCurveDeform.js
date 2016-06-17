@@ -1,3 +1,13 @@
+// two index in FixedVErtex that store the begining and end of wich curve 
+var ListOfCurves=[];
+var ListOfCurvesGeometry=[];
+var ListOfCurvesObject=[];
+function planeToDeforming(normal,x,y,z,v){
+    this.normal=new THREE.Vector3(normal.x,normal.y,normal.z);
+    this.point=new THREE.Vector3(x,y,z);
+    this.indexp=v;
+}
+
 //center: index in curveVertices array
 //wc: index of the curve in ListOfCurves array
 function curveSymmetricSegment(center,curveVertices,wc){

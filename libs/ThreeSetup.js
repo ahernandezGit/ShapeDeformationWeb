@@ -219,6 +219,51 @@ ThreeSetup.prototype.render = function() {
             }
         }
     }
+    if(ModeAddCurve){
+       flagIntersectionMesh=false;    
+       //console.log(isAddingCurve);    
+       raycasterCurve.setFromCamera( mouse, setup.camera );
+        //raycasterCurve.linePrecision=sizeGrid/8;
+       colorF=new THREE.Color(0x037499); 
+       var mesh=setup.scene.getObjectByName("mesh");
+       var intersects = raycasterCurve.intersectObject(mesh);   
+       console.log(intersects.length);
+       if ( intersects.length > 0 ) {
+            flagIntersectionMesh=true;
+            var intersect = intersects[0];
+             var intersect1 = intersects[1];
+            /*var a=intersect.face.a;
+            var b=intersect.face.b;
+            var c=intersect.face.c;
+            */
+            if(isAddingCurve){
+                //console.log("entrei isaddingcurve");
+                if(faceArrayOfNewCurve.length==0){
+                    faceArrayOfNewCurve.push(intersect.faceIndex);
+                    console.log(faceArrayOfNewCurve);
+                    //mesh.geometry.faces[intersect.faceIndex].color=colorF;
+                    intersect.face.color.setRGB(20/256,144/256,175/256);
+                    intersect.object.geometry.colorsNeedUpdate = true;
+                    intersect1.face.color.setRGB(20/256,144/256,175/256);
+                    intersect1.object.geometry.colorsNeedUpdate = true;
+                    //mesh.geometry.colorsNeedUpdate=true;
+                }
+                else if(faceArrayOfNewCurve[faceArrayOfNewCurve.length-1]!=intersect.faceIndex){
+                    faceArrayOfNewCurve.push(intersect.faceIndex);
+                    console.log(faceArrayOfNewCurve);
+                    //mesh.geometry.faces[intersect.faceIndex].color=colorF;
+                    intersect.face.color.setRGB(20/256,144/256,175/256);
+                    intersect.object.geometry.colorsNeedUpdate = true;
+                    intersect1.face.color.setRGB(20/256,144/256,175/256);
+                    intersect1.object.geometry.colorsNeedUpdate = true;
+                    //mesh.geometry.colorsNeedUpdate=true;
+                }
+            }
+       }
+       else{
+           flagIntersectionMesh=false;
+       }
+    }
     this.controls.update();
     this.renderer.render(this.scene, this.camera);
 }
