@@ -65,12 +65,12 @@ function inflationFunction3(){
         t++;
     }
     setTimeout(updateRenderMesh,500);
-    Ac={};
+    //Ac={};
     AcT={};
     invAcTAc={};
 }
 
-function oneStepSurfaceoptimization(laplacianArray){
+function oneStepSurfaceoptimization(laplaX,laplaY,laplaZ){
      var n=L.n;
     //var fL=full(L);
     var el=computeAverageEdgeLength();
@@ -82,7 +82,7 @@ function oneStepSurfaceoptimization(laplacianArray){
     //var cid=IterationCurvaturesProcess(ci);
     var eld=IterationEdgeLength(mulScalarVector(avg,ones(el.length)));
     var etaarray=computeEdgeVector(eld);
-    var lx=zeros(n);
+    /*var lx=zeros(n);
     var ly=zeros(n);
     var lz=zeros(n);
     for(var i=0;i<n;i++){
@@ -92,7 +92,10 @@ function oneStepSurfaceoptimization(laplacianArray){
     }
     lx=mulspMatrixVector(L,lx);
     ly=mulspMatrixVector(L,ly);
-    lz=mulspMatrixVector(L,lz);
+    lz=mulspMatrixVector(L,lz);*/
+    var lx=laplaX;
+    var ly=laplaY;
+    var lz=laplaZ;
     var m=etaarray.length;
     var r=FixedVertex.length;
     var A=zeros(n+r+m,n);
@@ -246,6 +249,7 @@ function createInicialMesh() {
     GridMeshVertexArray=[];
     GridMeshFacesArray=[];
     TableHashIndextoPosition=[];
+    LineStroke={};
 }
 function OtherMouseControls() {
      points=[];
@@ -298,10 +302,11 @@ function loadFileAsText(){
 
 	var fileReader = new FileReader();
     var text="";
+    clearScene();
 	fileReader.onload = function(fileLoadedEvent) 
 	{
         text = String(fileReader.result);
-        hemesh=new Hemesh();
+        //hemesh=new Hemesh();
         hemesh.fromOBJ(text); 
         var wireframeLines = hemesh.toWireframeGeometry();
        // wireframeLines.faces=FacesVertices[0];
@@ -348,9 +353,12 @@ function loadFileAsText(){
 
         };
         fileReader.readAsText(fileToLoad);
+        L=uniformLaplacian();
+        
+    
 }
 
-d3.select('#finishButton').on('click',OtherMouseControls);
+
 d3.select('#opButton').on('click',function () {
     var Linesam=setup.scene.getObjectByName("LineBoundary");
     var borderl=setup.scene.getObjectByName("borderLine"); 
@@ -479,13 +487,21 @@ d3.select("#addButton").on("click",function(){
      ModeDrawInitialCurve=false;
      ModeDebug=false;
      ModeAddCurve=true;
+     console.log("add curve ");
      //canvaswindows.on("mousedown",null);
      //canvaswindows.on("mouseup",null);
      //canvaswindows.on("mousemove",null);
      
 });
 d3.select("#startButton").on("click",startButtonF);
-d3.select("#inflationStepButton").on("click",oneStepSurfaceoptimization);
+d3.select("#inflationStepButton").on("click",function (){
+    oneStepSurfaceoptimization(pathCurve.OXLaplacian,pathCurve.OYLaplacian,pathCurve.OZLaplacian);
+});
+d3.select("#optQualityButton").on("click",function (){
+    OptimizeQualityTriangles();
+    setTimeout(updateRenderMesh,100);
+});
+d3.select('#finishButton').on('click',OtherMouseControls);
 function startButtonF(){
      setup.controls.enabled=true;
      canvaswindows.style('cursor','default');
@@ -495,4 +511,100 @@ function startButtonF(){
      ModeDrawInitialCurve=false;
      ModeDebug=false;
      ModeAddCurve=false;
+}
+function OptimizeQualityTriangles(){
+    var n=L.n;
+    var A=zeros(2*n,n);
+    var bx=zeros(2*n);
+    var by=zeros(2*n);
+    var bz=zeros(2*n);
+    var laplaCotan=[];
+    var meancurvature=[];
+    for(var i=0;i<n;i++){
+        var la=LaplacianCotangent(i)
+        laplaCotan.push(la);
+        meancurvature.push(la.length()/2);
+    }
+    meancurvature.sort();
+    var Q1=meancurvature[Math.round(n/4)];
+    var Q3=meancurvature[Math.round(3*n/4)];
+    var IQ=Q3-Q1;
+    var kmin=0;
+    var kmax=meancurvature.length-1;
+    var weight=zeros(n);
+    for(var i=n-1;i>0;i=i-1){
+        if(meancurvature[i]<Q3+3*IQ){
+            kmax=i;
+            break;
+        }
+    }
+    var ct=100;
+    for(var i=kmax+1;i<n;i++){
+        weight[i]=ct;
+    }
+    for(var i=0;i<kmax;i++){
+        weight[i]=(ct/(meancurvature[kmax]-meancurvature[kmin]))*meancurvature[i]-(ct/(meancurvature[kmax]-meancurvature[kmin]))*meancurvature[kmin];
+    }
+    for(var i=n;i<2*n;i++){
+        A.val[i*A.n+i-n]=weight[i-n]; 
+        bx[i]=weight[i-n]*hemesh.positions[i-n].x;
+        by[i]=weight[i-n]*hemesh.positions[i-n].y;
+        bz[i]=weight[i-n]*hemesh.positions[i-n].z;
+    }
+    var ri = 0;
+    for (var i = 0; i < n; i++) {
+			var s = L.rows[i];
+			var e = L.rows[i+1];
+			for ( var k=s; k < e; k++) {
+				A.val[ri + L.cols[k] ] = L.val[k];
+			}
+			ri += n; 
+            bx[i]=laplaCotan[i].x;
+            by[i]=laplaCotan[i].y;
+            bz[i]=laplaCotan[i].z;
+    }
+    var spA=sparse(A);
+    var labx = new Lalolab("laloxname",false,"libs/lalolib") ; 
+    var laby = new Lalolab("laloyname",false,"libs/lalolib") ; 
+    var labz = new Lalolab("lalozname",false,"libs/lalolib") ; 
+    labx.load(spA, "spA");
+    laby.load(spA, "spA");
+    labz.load(spA, "spA");
+    labx.load(bx, "bx");
+    laby.load(by, "by");
+    labz.load(bz, "bz");
+    labx.exec("vx=spcgnr(spA,bx)");	
+    laby.exec("vy=spcgnr(spA,by)");	
+    labz.exec("vz=spcgnr(spA,bz)");
+    flaglabx=false;
+    flaglaby=false;
+    flaglabz=false;
+    labx.getObject("vx", function ( result ) { // recover the value of a variable from the lab
+          for (var i=0;i<n;i++){
+              hemesh.positions[i].setX(result[i]);
+          }
+          //console.log(result[0]);
+          flaglabx=true;
+          //console.log(flaglabx);
+          labx.close();
+    });	
+    laby.getObject("vy", function ( result ) { // recover the value of a variable from the lab
+        for (var i=0;i<n;i++){
+              hemesh.positions[i].setY(result[i]);
+        }
+        //console.log(result[0]);
+        flaglaby=true;
+        //console.log(flaglaby);
+        laby.close();
+    });
+    labz.getObject("vz", function ( result ) { // recover the value of a variable from the lab
+        for (var i=0;i<n;i++){
+              hemesh.positions[i].setZ(result[i]);
+        }
+        //console.log(result[0]);
+        flaglabz=true;
+        //console.log(flaglabz);
+        labz.close();
+    });
+    console.log("optimization quality finish");
 }

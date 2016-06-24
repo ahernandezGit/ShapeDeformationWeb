@@ -47,7 +47,32 @@ function meanCurvaturesCurveCotangent(v){
        //setup.scene.add(edge);
    return 0.125*vetor.length();    
 }
-
+function LaplacianCotangent(v){
+       var hs = hemesh.vertexHalfedge(v);
+       var vetor=new THREE.Vector3(0.0, 0.0, 0.0);  
+       var area=0;
+       hemesh.vertexCirculator(function(he){
+           var h2=hemesh.halfedgeNext(he);
+           var h4=hemesh.halfedgeOpposite(hemesh.halfedgeSinkCCW(he));
+           var face=hemesh.halfedgeFace(he);
+           if(h2>-1 && h4>-1){
+               var h3 = hemesh.halfedgeNext(h2); 
+               var h5 = hemesh.halfedgeNext(h4);  
+               var u = hemesh.halfedgeDirection(h3);
+               var v = hemesh.halfedgeDirection(hemesh.halfedgeOpposite(h2));
+               var uo = hemesh.halfedgeDirection(h5);
+               var vo = hemesh.halfedgeDirection(hemesh.halfedgeOpposite(h4));
+               var cotansum=u.dot(v)/u.clone().cross(v).length()+uo.dot(vo)/uo.clone().cross(vo).length();
+               cotansum=-0.5*cotansum;
+               var pjpi=hemesh.halfedgeDirection(he);
+               vetor.add(pjpi.multiplyScalar(cotansum));
+           }
+           area+=hemesh.faceArea(face);
+       },hs);
+       area=2*area/3;
+       vetor.divideScalar(area);
+       return vetor;    
+}
 function CurvatureVertexPlane(lvertex,vertex,rvertex){
         var v1=vertex.clone().sub(lvertex);
         var v2=rvertex.clone().sub(vertex)
@@ -537,10 +562,13 @@ function updateRenderMesh(){
         render();
     }
     else{
-        setTimeout(updateRenderMesh,500);
+        setTimeout(updateRenderMesh,200);
         console.log("sigo esperando para render");
     }
 }
+
+
+
 
 //Class version of the code to manage Surface Optimization 
 function SurfaceOptimization(FV,uniformLaplacian,heStructure){

@@ -21,6 +21,10 @@ function curveSymmetricSegment(center,curveVertices,wc){
     this.whatcurve=wc;
     this.arrayVertices=[center];
     this.curveVertices=curveVertices;
+    this.curveVerticesOriginal=[];
+    for(var i=0;i<curveVertices.length;i++){
+        this.curveVerticesOriginal.push(curveVertices[i].clone());
+    }
     this.doDeform={};
     this.lastarray=[];
     for(var i=0;i<hemesh.positions.length;i++){
@@ -42,7 +46,6 @@ function curveSymmetricSegment(center,curveVertices,wc){
 }
 curveSymmetricSegment.prototype.computeLevel=function (){
     var le=5*this.radius;
-    var vertexs=[];
     var js=this.center;
     var jp=this.center;
     var level=0; 
@@ -78,6 +81,9 @@ curveSymmetricSegment.prototype.computeLevel=function (){
     this.jp=jp;
     if(level>1){
         if(level>this.level && level<10){
+           for(var i=0;i<this.curveVertices.length;i++){
+               this.curveVertices[i].copy(this.curveVerticesOriginal[i]);
+           }
            this.doDeform=new deformed3(this.arrayVertices,this.center,this.curveVertices,ListOfCurvesObject[this.whatcurve]);
            this.level=level;  
            console.log(level);     
@@ -87,6 +93,31 @@ curveSymmetricSegment.prototype.computeLevel=function (){
            this.doDeform.updateVertices3();    
         }
     }
+}
+curveSymmetricSegment.prototype.setFixedROI=function (le){
+    var js=this.center;
+    var jp=this.center;
+    var level=0; 
+    var s=this.curveVertices.length;
+    var arrayVertices=[this.center];
+    while(level<le){   
+        var js0=js;
+        var jp0=jp;
+        js=(js+1)%s;
+        jp=(jp-1+s)%s;
+        var pjs=this.curveVertices[js];
+        var pjp=this.curveVertices[jp];
+        var pjs0=this.curveVertices[js0];
+        var pjp0=this.curveVertices[jp0];
+        level++;
+        arrayVertices.push(js);
+        arrayVertices.unshift(jp);
+    }
+    this.arrayVertices=arrayVertices;
+    this.js=js;
+    this.jp=jp;
+    this.doDeform=new deformed3(this.arrayVertices,this.center,this.curveVertices,ListOfCurvesObject[this.whatcurve]);
+    this.level=level;  
 }
 curveSymmetricSegment.prototype.updateRadius=function(){
     var vector = new THREE.Vector3();
@@ -98,7 +129,7 @@ curveSymmetricSegment.prototype.updateRadius=function(){
     var point=cameraposition.add(dir.multiplyScalar(t));
     this.radius=point.clone().distanceTo(this.initialPosition);
     if(this.level>2) this.curveVertices[this.center].set(point.x,point.y,point.z);
-    this.computeLevel();
+    if(!checkMeshROI.checked)  this.computeLevel();
 }
 curveSymmetricSegment.prototype.goLast=function(){
     for(i=0;i<hemesh.positions.length;i++){
@@ -291,7 +322,7 @@ deformed3.prototype.updateHandle=function(pos){
     var t=plane.point.clone().sub(cameraposition).dot(plane.normal)/dir.dot(plane.normal);
     var point=cameraposition.add(dir.multiplyScalar(t));
     this.positions[this.tableHash[this.handle.toString()]].set(point.x,point.y,point.z);
-   
+    //this.curveVertex[this.tableHash[this.handle.toString()]].set(point.x,point.y,point.z);
     this.updateVertices3();
 }
 deformed3.prototype.updateVertices3=function(){
