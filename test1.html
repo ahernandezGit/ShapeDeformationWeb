@@ -162,6 +162,8 @@
         var arrayLineStroke=[];
         var isAddingCurve=false;
         var arrayEdgeExtremesPathStroke=[];
+        var tableHashVFOfNewCurve=[];
+        
         function mousePosition2D(event){
               var mouse=new THREE.Vector2();
               mouse.x = ( event.clientX / window.innerWidth ) * 2 - 1;
@@ -208,8 +210,31 @@
                 if(checkMeshROI.checked)  pathCurve.doDeform.updateVertices3();
             }
             if(ModeAddCurve){
-                CurrentPoint=mousePosition3D(event);
+                //CurrentPoint=mousePosition3D(event);
+                mouseCurrent2D=mousePosition2D(event);
                 if(!isAddingCurve) return;
+                var dist=mouseCurrent2D.clone().sub(mouseLast2D).length();
+                if(dist>0.1){
+                    var sampleMouse=[];
+                    var start=mouseLast2D;
+                    var dir=mouseCurrent2D.clone().sub(mouseLast2D).normalize();
+                    var nsample=Math.ceil(dist/0.1);
+                    var nlength=dist/(nsample-1);
+                    for(var i=0;i<nsample;i++){
+                        var coef=i*nlength;
+                        var ndir=dir.clone().multiplyScalar(coef);
+                        sampleMouse.push(start.clone().add(ndir));
+                    }
+                    for(var i=0;i<sampleMouse.length;i++){
+                        sampleMouse[i].x=Math.round(sampleMouse[i].x);
+                        sampleMouse[i].y=Math.round(sampleMouse[i].y);   
+                        raycasterCurve.setFromCamera( sampleMouse[i], setup.camera );
+                    }
+                    console.log(sampleMouse);
+                }
+                else{
+                    raycasterCurve.setFromCamera( mouseCurrent2D, setup.camera );    
+                }
                 //console.log(isAddingCurve);
                 //console.log(faceArrayOfNewCurve);
             }
@@ -242,7 +267,10 @@
             if(ModeAddCurve){
                 //if(flagIntersectionMesh){
                     isAddingCurve=true;
-                    LastPoint=mousePosition3D(event);
+                    //LastPoint=mousePosition3D(event);
+                    mouseLast2D=mousePosition2D(event);
+                    raycasterCurve.setFromCamera( mouseLast2D, setup.camera );
+                    
                 //}
             }
         }
