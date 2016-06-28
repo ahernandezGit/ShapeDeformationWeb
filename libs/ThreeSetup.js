@@ -222,7 +222,7 @@ ThreeSetup.prototype.render = function() {
     if(ModeAddCurve){
        flagIntersectionMesh=false;    
        //console.log(isAddingCurve);    
-       raycasterCurve.setFromCamera( mouse, setup.camera );
+       //raycasterCurve.setFromCamera( mouse, setup.camera );
         //raycasterCurve.linePrecision=sizeGrid/8;
        var colorF=new THREE.Color(0x037499); 
        var mesh=setup.scene.getObjectByName("mesh");
@@ -243,7 +243,9 @@ ThreeSetup.prototype.render = function() {
                     arrayEdgeExtremesPathStroke.push(a);
                     arrayEdgeExtremesPathStroke.push(b);
                     arrayEdgeExtremesPathStroke.push(c);
-                    //console.log(faceArrayOfNewCurve);
+                    tableHashVFOfNewCurve[a.toString()]=[intersect.faceIndex];
+                    tableHashVFOfNewCurve[b.toString()]=[intersect.faceIndex];
+                    tableHashVFOfNewCurve[c.toString()]=[intersect.faceIndex];
                     intersect.face.color.setRGB(20/256,144/256,175/256);
                     intersect.object.geometry.colorsNeedUpdate = true;
                 }
@@ -252,13 +254,19 @@ ThreeSetup.prototype.render = function() {
                     arrayLineStroke.push(intersect.point);
                     if(arrayEdgeExtremesPathStroke.indexOf(a)==-1){
                         arrayEdgeExtremesPathStroke.push(a);
+                        tableHashVFOfNewCurve[a.toString()]=[intersect.faceIndex];
                     } 
+                    else tableHashVFOfNewCurve[a.toString()].push(intersect.faceIndex);
                     if(arrayEdgeExtremesPathStroke.indexOf(b)==-1){
                         arrayEdgeExtremesPathStroke.push(b);
+                        tableHashVFOfNewCurve[b.toString()]=[intersect.faceIndex];
                     } 
+                    else tableHashVFOfNewCurve[b.toString()].push(intersect.faceIndex);
                     if(arrayEdgeExtremesPathStroke.indexOf(c)==-1){
                         arrayEdgeExtremesPathStroke.push(c);
-                    } 
+                        tableHashVFOfNewCurve[c.toString()]=[intersect.faceIndex];
+                    }
+                    else tableHashVFOfNewCurve[c.toString()].push(intersect.faceIndex);
                     
                     //console.log(faceArrayOfNewCurve);
                     intersect.face.color.setRGB(20/256,144/256,175/256);

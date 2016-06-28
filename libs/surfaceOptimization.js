@@ -567,9 +567,20 @@ function updateRenderMesh(){
     }
 }
 
-
-
-
+function updateRenderMeshWithoutFlag(){
+    var mesh=setup.scene.getObjectByName("mesh");
+    var wireframe=setup.scene.getObjectByName("wireframeMesh");
+    mesh.geometry.verticesNeedUpdate = true;
+    setup.scene.remove(wireframe);
+    wireframeLines = hemesh.toWireframeGeometry();
+    var wireframe = new THREE.LineSegments(wireframeLines, new THREE.LineBasicMaterial({
+        color: 0xff2222,
+        opacity: 0.2,
+        transparent: true,
+    }));
+    wireframe.name="wireframeMesh";
+    setup.scene.add(wireframe);
+}
 //Class version of the code to manage Surface Optimization 
 function SurfaceOptimization(FV,uniformLaplacian,heStructure){
     this.FixedVertex=FV;

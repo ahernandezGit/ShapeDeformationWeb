@@ -24,6 +24,8 @@ function fixBoundaryPoints() {
           //setTimeout(cancelAnimation,4000);
       }
       else{
+         FixedVertex=[];
+         ListOfCurves=[];
          for(var i=GridMeshVertexArray.length-pointSample.length;i<GridMeshVertexArray.length;i++){
                FixedVertex.push(i);
                if(i<0){
@@ -32,6 +34,8 @@ function fixBoundaryPoints() {
                    break;
                }
          }
+         console.log("List of curves until now");
+         console.log(ListOfCurves);
          ListOfCurves.push([0,FixedVertex.length-1]);
          ListOfCurvesGeometry=[];  
          console.log("ptd zero");
@@ -243,6 +247,8 @@ function createInicialMesh() {
     //ListOfCurvesGeometry[0].vertices=LineSample.geometry.vertices.slice();
     //ListOfCurvesObject[0]=new THREE.LineSegments(ListOfCurvesGeometry[0], materialSample);
     ListOfCurvesObject[0]=new THREE.Line(ListOfCurvesGeometry[0], materialSample);
+    console.log("ncurves after first render",ListOfCurves.length);
+    console.log(ListOfCurves);
     setup.scene.remove(LineSample);
     setup.scene.add(ListOfCurvesObject[0]);
     setup.scene.add(mesh,wireframe);
@@ -444,7 +450,14 @@ d3.select("#uploadButton").on("click",function(){
    //hemesh.fromOBJ(loadFileAsText());
 });
 d3.select("#backButton").on("click",function(){
-   pathCurve.goLast();
+   if (pathCurve.center!=undefined) pathCurve.goLast();
+   else{
+       for(var i=0;i<hemesh.positions.length;i++){
+        hemesh.positions[i].copy(copyMeshPositions[i]);
+        updateRenderMeshWithoutFlag();
+       }
+       console.log("copymesh");
+   }     
 });
 d3.select("#radioSBS").on("click",function(){
    document.getElementById("buttonsSBS").style.display="block"; 
@@ -475,9 +488,6 @@ d3.select("#cdButton").on("click",function(){
      ModeDrawInitialCurve=false;
      ModeDebug=false;
      ModeAddCurve=false;
-     //canvaswindows.on("mousedown",null);
-     //canvaswindows.on("mouseup",null);
-     //canvaswindows.on("mousemove",null);
      
 });
 d3.select("#addButton").on("click",function(){
@@ -488,10 +498,10 @@ d3.select("#addButton").on("click",function(){
      ModeDebug=false;
      ModeAddCurve=true;
      console.log("add curve ");
-     //canvaswindows.on("mousedown",null);
-     //canvaswindows.on("mouseup",null);
-     //canvaswindows.on("mousemove",null);
-     
+     copyMeshPositions=[];
+     for(var i=0;i<hemesh.positions.length;i++){
+        copyMeshPositions.push(hemesh.positions[i].clone());
+     }
 });
 d3.select("#startButton").on("click",startButtonF);
 d3.select("#inflationStepButton").on("click",function (){

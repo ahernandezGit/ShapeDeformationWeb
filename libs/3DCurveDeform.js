@@ -80,7 +80,7 @@ curveSymmetricSegment.prototype.computeLevel=function (){
     this.js=js;
     this.jp=jp;
     if(level>1){
-        if(level>this.level && level<10){
+        if(level>this.level && level<this.curveVerticesOriginal.length/4){
            for(var i=0;i<this.curveVertices.length;i++){
                this.curveVertices[i].copy(this.curveVerticesOriginal[i]);
            }
