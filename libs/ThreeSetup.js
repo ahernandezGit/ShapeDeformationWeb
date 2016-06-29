@@ -219,69 +219,6 @@ ThreeSetup.prototype.render = function() {
             }
         }
     }
-    if(ModeAddCurve){
-       flagIntersectionMesh=false;    
-       //console.log(isAddingCurve);    
-       //raycasterCurve.setFromCamera( mouse, setup.camera );
-        //raycasterCurve.linePrecision=sizeGrid/8;
-       var colorF=new THREE.Color(0x037499); 
-       var mesh=setup.scene.getObjectByName("mesh");
-       var intersects = raycasterCurve.intersectObject(mesh);   
-       //console.log(intersects.length);
-       if ( intersects.length > 0 ) {
-            flagIntersectionMesh=true;
-            var intersect = intersects[0];
-            var intersect1 = intersects[1];
-            if(isAddingCurve){
-                //console.log("entrei isaddingcurve");
-                var a=intersect.face.a;
-                var b=intersect.face.b;
-                var c=intersect.face.c;
-                if(faceArrayOfNewCurve.length==0){
-                    faceArrayOfNewCurve.push(intersect.faceIndex);
-                    arrayLineStroke.push(intersect.point);
-                    arrayEdgeExtremesPathStroke.push(a);
-                    arrayEdgeExtremesPathStroke.push(b);
-                    arrayEdgeExtremesPathStroke.push(c);
-                    tableHashVFOfNewCurve[a.toString()]=[intersect.faceIndex];
-                    tableHashVFOfNewCurve[b.toString()]=[intersect.faceIndex];
-                    tableHashVFOfNewCurve[c.toString()]=[intersect.faceIndex];
-                    intersect.face.color.setRGB(20/256,144/256,175/256);
-                    intersect.object.geometry.colorsNeedUpdate = true;
-                }
-                else if(faceArrayOfNewCurve[faceArrayOfNewCurve.length-1]!=intersect.faceIndex){
-                    faceArrayOfNewCurve.push(intersect.faceIndex);
-                    arrayLineStroke.push(intersect.point);
-                    if(arrayEdgeExtremesPathStroke.indexOf(a)==-1){
-                        arrayEdgeExtremesPathStroke.push(a);
-                        tableHashVFOfNewCurve[a.toString()]=[intersect.faceIndex];
-                    } 
-                    else tableHashVFOfNewCurve[a.toString()].push(intersect.faceIndex);
-                    if(arrayEdgeExtremesPathStroke.indexOf(b)==-1){
-                        arrayEdgeExtremesPathStroke.push(b);
-                        tableHashVFOfNewCurve[b.toString()]=[intersect.faceIndex];
-                    } 
-                    else tableHashVFOfNewCurve[b.toString()].push(intersect.faceIndex);
-                    if(arrayEdgeExtremesPathStroke.indexOf(c)==-1){
-                        arrayEdgeExtremesPathStroke.push(c);
-                        tableHashVFOfNewCurve[c.toString()]=[intersect.faceIndex];
-                    }
-                    else tableHashVFOfNewCurve[c.toString()].push(intersect.faceIndex);
-                    
-                    //console.log(faceArrayOfNewCurve);
-                    intersect.face.color.setRGB(20/256,144/256,175/256);
-                    intersect.object.geometry.colorsNeedUpdate = true;
-                    //intersect1.face.color.setRGB(20/256,144/256,175/256);
-                    //intersect1.object.geometry.colorsNeedUpdate = true;
-                    //mesh.geometry.colorsNeedUpdate=true;
-                }
-            }
-           
-       }
-       else{
-           flagIntersectionMesh=false;
-       }
-    }
     this.controls.update();
     this.renderer.render(this.scene, this.camera);
 }

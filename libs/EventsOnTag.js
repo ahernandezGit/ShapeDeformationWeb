@@ -247,8 +247,8 @@ function createInicialMesh() {
     //ListOfCurvesGeometry[0].vertices=LineSample.geometry.vertices.slice();
     //ListOfCurvesObject[0]=new THREE.LineSegments(ListOfCurvesGeometry[0], materialSample);
     ListOfCurvesObject[0]=new THREE.Line(ListOfCurvesGeometry[0], materialSample);
+    ListOfCurvesObject[0].name="curve0";
     console.log("ncurves after first render",ListOfCurves.length);
-    console.log(ListOfCurves);
     setup.scene.remove(LineSample);
     setup.scene.add(ListOfCurvesObject[0]);
     setup.scene.add(mesh,wireframe);
@@ -452,10 +452,28 @@ d3.select("#uploadButton").on("click",function(){
 d3.select("#backButton").on("click",function(){
    if (pathCurve.center!=undefined) pathCurve.goLast();
    else{
+       var mesh=setup.scene.getObjectByName("mesh");
        for(var i=0;i<hemesh.positions.length;i++){
         hemesh.positions[i].copy(copyMeshPositions[i]);
         updateRenderMeshWithoutFlag();
        }
+       var colorA=new THREE.Color(0,0,0);
+       for(var i=0;i<faceArrayOfNewCurve.length;i++){
+           if(i!=faceArrayOfNewCurve[i]){
+               colorA.copy(mesh.geometry.faces[i].color);
+               break;
+           }
+       }
+       for(var i=0;i<faceArrayOfNewCurve.length;i++){
+           mesh.geometry.faces[faceArrayOfNewCurve[i]].color.copy(colorA);
+       }
+       mesh.geometry.colorsNeedUpdate = true;
+       FixedVertex=FixedVertex.slice(0,ListOfCurves[ListOfCurves.length-1][0]);
+       var curveCurrent=setup.scene.getObjectByName("curve"+(ListOfCurves.length-1).toString());
+       setup.scene.remove(curveCurrent);
+       ListOfCurves.pop();
+       ListOfCurvesGeometry.pop();
+       ListOfCurvesObject.pop();
        console.log("copymesh");
    }     
 });
