@@ -170,6 +170,12 @@
               mouse.y = - ( event.clientY / window.innerHeight ) * 2 + 1;		
               return mouse;
         }
+        function mouseScreen2D(event){
+              var mouse=new THREE.Vector2();
+              mouse.x =  event.clientX ;
+              mouse.y =  event.clientY;		
+              return mouse;
+        }
         function mousePosition3D(event){
             // calculate mouse position in normalized device coordinates
             // (-1 to +1) for both components
@@ -211,30 +217,49 @@
             }
             if(ModeAddCurve){
                 //CurrentPoint=mousePosition3D(event);
-                mouseCurrent2D=mousePosition2D(event);
                 if(!isAddingCurve) return;
+                mouse=mousePosition2D(event);
+                mouseCurrent2D=mouseScreen2D(event);
+                flagIntersectionMesh=false;    
+               //console.log(isAddingCurve);    
+               //raycasterCurve.setFromCamera( mouse, setup.camera );
+                //raycasterCurve.linePrecision=sizeGrid/8;
+                var mesh=setup.scene.getObjectByName("mesh");
                 var dist=mouseCurrent2D.clone().sub(mouseLast2D).length();
-                if(dist>0.1){
+                if(dist>3){
                     var sampleMouse=[];
                     var start=mouseLast2D;
                     var dir=mouseCurrent2D.clone().sub(mouseLast2D).normalize();
-                    var nsample=Math.ceil(dist/0.1);
+                    var nsample=Math.ceil(dist/3);
                     var nlength=dist/(nsample-1);
                     for(var i=0;i<nsample;i++){
                         var coef=i*nlength;
                         var ndir=dir.clone().multiplyScalar(coef);
                         sampleMouse.push(start.clone().add(ndir));
                     }
-                    for(var i=0;i<sampleMouse.length;i++){
-                        sampleMouse[i].x=Math.round(sampleMouse[i].x);
-                        sampleMouse[i].y=Math.round(sampleMouse[i].y);   
+                    for(var i=0;i<sampleMouse.length-1;i++){
+                        sampleMouse[i].x= (sampleMouse[i].x / window.innerWidth ) * 2 - 1;;
+                        sampleMouse[i].y=- (sampleMouse[i].y / window.innerHeight ) * 2 + 1;		  
                         raycasterCurve.setFromCamera( sampleMouse[i], setup.camera );
+                        var intersects = [];
+                        intersects = raycasterCurve.intersectObject(mesh);
+                        verifyIntersectRay(intersects);
                     }
-                    console.log(sampleMouse);
+
+                    raycasterCurve.setFromCamera( mouse, setup.camera );
                 }
                 else{
-                    raycasterCurve.setFromCamera( mouseCurrent2D, setup.camera );    
+                    raycasterCurve.setFromCamera( mouse, setup.camera );    
                 }
+                var intersects = raycasterCurve.intersectObject(mesh);   
+                //console.log(intersects.length);
+                verifyIntersectRay(intersects);
+                mouseLast2D.copy(mouseCurrent2D);    
+                //var dist=mouseCurrent2D.clone().sub(mouseLast2D).length();
+                
+                //raycasterCurve.setFromCamera( mouse, setup.camera );    
+                //console.log(dist);
+                //mouseLast2D.copy(mouseCurrent2D);   
                 //console.log(isAddingCurve);
                 //console.log(faceArrayOfNewCurve);
             }
@@ -249,7 +274,7 @@
                 points.push(LastPoint);  
                 //render();
             } 
-           if(ModeCurveDeformation){
+            if(ModeCurveDeformation){
                  if(flagIntersectionCurve){
                      isDeforming=true;
                      LastPoint=mousePosition3D(event);
@@ -268,8 +293,10 @@
                 //if(flagIntersectionMesh){
                     isAddingCurve=true;
                     //LastPoint=mousePosition3D(event);
-                    mouseLast2D=mousePosition2D(event);
-                    raycasterCurve.setFromCamera( mouseLast2D, setup.camera );
+                    mouseLast2D=mouseScreen2D(event);
+                    mouse=mousePosition2D(event);
+                    faceArrayOfNewCurve=[];
+                    raycasterCurve.setFromCamera( mouse, setup.camera );
                     
                 //}
             }
@@ -317,7 +344,7 @@
                 var pointGeo=new THREE.Geometry();
                 
                 var pointmaterial = new THREE.PointsMaterial({color: 0x27B327, size: 10.0, sizeAttenuation: false, alphaTest: 0.5 });
-                console.log(otro);
+                //console.log(otro);
                 for(var i=0;i<otro.length;i++){
                    pointGeo.vertices.push(otro[i]);    
                 }
@@ -334,9 +361,11 @@
                 tempLine.name="LineStroke";
                 setup.scene.add(tempLine);
                 setup.scene.add( particlesC );
-                faceArrayOfNewCurve=[];
+                updateRenderMeshWithoutFlag();
+                //faceArrayOfNewCurve=[];
                 arrayLineStroke=[];
                 arrayEdgeExtremesPathStroke=[];
+                tableHashVFOfNewCurve=[];
                 console.log("finish up");
                 startButtonF();
             }
