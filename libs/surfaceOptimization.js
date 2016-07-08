@@ -550,6 +550,7 @@ function updateRenderMesh(){
         mesh.geometry.verticesNeedUpdate = true;
 
         setup.scene.remove(wireframe);
+        dispose3(wireframe);
         wireframeLines = hemesh.toWireframeGeometry();
         var wireframe = new THREE.LineSegments(wireframeLines, new THREE.LineBasicMaterial({
             color: 0xff2222,
@@ -558,6 +559,10 @@ function updateRenderMesh(){
         }));
         wireframe.name="wireframeMesh";
         setup.scene.add(wireframe);
+        for(var i=0;i<ListOfCurves.length;i++){
+            var object=setup.scene.getObjectByName("curve"+i.toString());
+            object.geometry.verticesNeedUpdate=true;
+        }
         cancelRender=false;
         render();
     }
@@ -572,6 +577,7 @@ function updateRenderMeshWithoutFlag(){
     var wireframe=setup.scene.getObjectByName("wireframeMesh");
     mesh.geometry.verticesNeedUpdate = true;
     setup.scene.remove(wireframe);
+    dispose3(wireframe);
     wireframeLines = hemesh.toWireframeGeometry();
     var wireframe = new THREE.LineSegments(wireframeLines, new THREE.LineBasicMaterial({
         color: 0xff2222,
@@ -580,6 +586,10 @@ function updateRenderMeshWithoutFlag(){
     }));
     wireframe.name="wireframeMesh";
     setup.scene.add(wireframe);
+    for(var i=0;i<ListOfCurves.length;i++){
+        var object=setup.scene.getObjectByName("curve"+i.toString());
+        object.geometry.verticesNeedUpdate=true;
+    }
 }
 //Class version of the code to manage Surface Optimization 
 function SurfaceOptimization(FV,uniformLaplacian,heStructure){
@@ -965,6 +975,11 @@ SurfaceOptimization.prototype.updateRenderMesh=function(){
         }));
         wireframe.name="wireframeMesh";
         setup.scene.add(wireframe);
+        for(var i=0;i<ListOfCurves.length;i++){
+            var object=setup.scene.getObjectByName("curve"+i.toString());
+            console.log(object);
+            object.geometry.verticesNeedUpdate=true;
+        }
         cancelRender=false;
         render();
         console.log("render ready class");

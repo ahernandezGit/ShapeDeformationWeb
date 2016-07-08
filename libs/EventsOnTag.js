@@ -129,7 +129,7 @@ function oneStepSurfaceoptimization(laplaX,laplaY,laplaZ){
         
     }
      // 0.01 for vertices in the B subset
-    var wel=0.01;
+    var wel=1;
     for(var i=n+r;i<n+r+m;i++){
         b.val[3*i]=wel*etaarray[i-n-r].vector.x;
         b.val[3*i+1]=wel*etaarray[i-n-r].vector.y;
@@ -218,6 +218,7 @@ function createInicialMesh() {
         transparent: true,
     }));
     setup.scene.remove(gridgeometry);
+    dispose3(gridgeometry);
     var Linesam=setup.scene.getObjectByName("LineBoundary");
     var borderl=setup.scene.getObjectByName("borderLine"); 
     var debuglines=setup.scene.getObjectByName("DebugPoints");
@@ -227,18 +228,21 @@ function createInicialMesh() {
     mesh.name="mesh";
     
     if(Linesam!=undefined ){
+        dispose3(Linesam);
         Linesam.children=[];
     }
     if(borderl!=undefined ){
+        dispose3(borderl);
         borderl.children=[];
     }
     if(debuglines!=undefined ){
        setup.scene.remove(debuglines);
+       dispose3(debuglines);
     }
     if(debuglines2!=undefined ){
        setup.scene.remove(debuglines2);
+       dispose3(debuglines2);
     }
-    gridgeometry={};    
     ListOfCurvesGeometry.push(new THREE.Geometry());
     for(var i=ListOfCurves[0][0];i<=ListOfCurves[0][1];i++){
         ListOfCurvesGeometry[0].vertices.push(hemesh.positions[FixedVertex[i]]);
@@ -250,16 +254,18 @@ function createInicialMesh() {
     ListOfCurvesObject[0].name="curve0";
     console.log("ncurves after first render",ListOfCurves.length);
     setup.scene.remove(LineSample);
+    dispose3(LineSample);
     setup.scene.add(ListOfCurvesObject[0]);
     setup.scene.add(mesh,wireframe);
     GridMeshVertexArray=[];
     GridMeshFacesArray=[];
     TableHashIndextoPosition=[];
-    LineStroke={};
+    dispose3(LineStroke);
+    //LineStroke={};
 }
 function OtherMouseControls() {
      points=[];
-     console.log(points);
+     //console.log(points);
      //canvaswindows.on("mousedown",null);
      ///canvaswindows.on("mouseup",null);
      //canvaswindows.on("mousemove",null);
@@ -295,7 +301,6 @@ function saveTextAsFile(textToWrite){
 		downloadLink.style.display = "none";
 		document.body.appendChild(downloadLink);
 	}
-
 	downloadLink.click();
 }
 
@@ -333,6 +338,7 @@ function loadFileAsText(){
             transparent: true,
         }));
         setup.scene.remove(gridgeometry);
+        dispose3(gridgeometry);
         var Linesam=setup.scene.getObjectByName("LineBoundary");
         var borderl=setup.scene.getObjectByName("borderLine"); 
         var debuglines=setup.scene.getObjectByName("DebugPoints");
@@ -340,18 +346,22 @@ function loadFileAsText(){
 
         wireframe.name="wireframe";
         mesh.name="mesh";
-
+        
         if(Linesam!=undefined ){
+            dispose3(Linesam);
             Linesam.children=[];
         }
         if(borderl!=undefined ){
+            dispose3(borderl);
             borderl.children=[];
         }
         if(debuglines!=undefined ){
            setup.scene.remove(debuglines);
+           dispose3(debuglines);
         }
         if(debuglines2!=undefined ){
            setup.scene.remove(debuglines2);
+           dispose3(debuglines);    
         }
         gridgeometry={};    
 
@@ -368,6 +378,9 @@ function loadFileAsText(){
 d3.select('#opButton').on('click',function () {
     var Linesam=setup.scene.getObjectByName("LineBoundary");
     var borderl=setup.scene.getObjectByName("borderLine"); 
+    
+    dispose3(Linesam);    
+    dispose3(borderl);
     if(Linesam!=undefined ){
         Linesam.children=[];
     }
@@ -451,13 +464,13 @@ d3.select("#uploadButton").on("click",function(){
 });
 d3.select("#backButton").on("click",function(){
    if (pathCurve.center!=undefined) pathCurve.goLast();
-   else{
+   else if(ListOfCurves.length!=0){
        var mesh=setup.scene.getObjectByName("mesh");
        for(var i=0;i<hemesh.positions.length;i++){
-        hemesh.positions[i].copy(copyMeshPositions[i]);
-        updateRenderMeshWithoutFlag();
+           hemesh.positions[i].copy(copyMeshPositions[i]);
        }
-       var colorA=new THREE.Color(0,0,0);
+       console.log("update vertex");
+       /*var colorA=new THREE.Color(0,0,0);
        for(var i=0;i<faceArrayOfNewCurve.length;i++){
            if(i!=faceArrayOfNewCurve[i]){
                colorA.copy(mesh.geometry.faces[i].color);
@@ -468,14 +481,21 @@ d3.select("#backButton").on("click",function(){
            mesh.geometry.faces[faceArrayOfNewCurve[i]].color.copy(colorA);
        }
        mesh.geometry.colorsNeedUpdate = true;
+       */
+       console.log(FixedVertex.length);
        FixedVertex=FixedVertex.slice(0,ListOfCurves[ListOfCurves.length-1][0]);
+       console.log(FixedVertex.length);
        var curveCurrent=setup.scene.getObjectByName("curve"+(ListOfCurves.length-1).toString());
+       console.log(curveCurrent.name);
        setup.scene.remove(curveCurrent);
+       dispose3(curveCurrent);
        ListOfCurves.pop();
        ListOfCurvesGeometry.pop();
        ListOfCurvesObject.pop();
+       updateRenderMeshWithoutFlag();
        console.log("copymesh");
-   }     
+   }
+   console.log("back finish") ;
 });
 d3.select("#radioSBS").on("click",function(){
    document.getElementById("buttonsSBS").style.display="block"; 
@@ -491,7 +511,11 @@ d3.select("#radioFibermesh").on("click",function(){
        fixBoundaryPoints(); 
        createInicialMesh();
        inflationFunction3();    
+       ModeCurveDeformation=false;     
        ModeDrawInitialCurve=false;
+       ModeDebug=false;
+       ModeAddCurve=false;
+       ModeChangeType=false;
        ModeFibermesh=true;
        OtherMouseControls();    
    } 
@@ -500,13 +524,16 @@ d3.select("#radioFibermesh").on("click",function(){
 d3.select("#fileToLoad").on("change",loadFileAsText);
 
 d3.select("#cdButton").on("click",function(){
-     setup.controls.enabled=false;
      ModeCurveDeformation=true;     
      ModeFibermesh=false;
      ModeDrawInitialCurve=false;
      ModeDebug=false;
      ModeAddCurve=false;
-     
+     ModeChangeType=false;
+     console.log("modecurve deformation");
+     setup.controls.enabled=false;
+     scancelRender=false;
+     render();
 });
 d3.select("#addButton").on("click",function(){
      setup.controls.enabled=false;
@@ -515,6 +542,7 @@ d3.select("#addButton").on("click",function(){
      ModeDrawInitialCurve=false;
      ModeDebug=false;
      ModeAddCurve=true;
+     ModeChangeType=false;
      console.log("add curve ");
      copyMeshPositions=[];
      for(var i=0;i<hemesh.positions.length;i++){
@@ -539,6 +567,7 @@ function startButtonF(){
      ModeDrawInitialCurve=false;
      ModeDebug=false;
      ModeAddCurve=false;
+     ModeChangeType=false;
 }
 function OptimizeQualityTriangles(){
     var n=L.n;

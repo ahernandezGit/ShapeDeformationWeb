@@ -17,11 +17,15 @@ function curveSymmetricSegment(center,curveVertices,wc){
     this.level=0;
     this.js=center;
     this.jp=center;
-    this.initialPosition=curveVertices[center].clone();
+    this.initialPosition=curveVertices[this.center].clone();
     this.whatcurve=wc;
     this.arrayVertices=[center];
     this.curveVertices=curveVertices;
     this.curveVerticesOriginal=[];
+    
+    var ll=ListOfCurvesGeometry[this.whatcurve].vertices.length;
+    this.isclosed=ListOfCurvesGeometry[this.whatcurve].vertices[ll-1]==ListOfCurvesGeometry[this.whatcurve].vertices[0];
+    
     for(var i=0;i<curveVertices.length;i++){
         this.curveVerticesOriginal.push(curveVertices[i].clone());
     }
@@ -46,32 +50,35 @@ function curveSymmetricSegment(center,curveVertices,wc){
 }
 curveSymmetricSegment.prototype.computeLevel=function (){
     var le=5*this.radius;
+    //var isclosed=ListOfCurvesGeometry[this.whatcurve].vertices[ll-1]==ListOfCurvesGeometry[this.whatcurve].vertices[0];
     var js=this.center;
     var jp=this.center;
     var level=0; 
     var totaldistance=0;
     var s=this.curveVertices.length;
     var arrayVertices=[this.center];
-    while(true){   
-        var js0=js;
-        var jp0=jp;
-        js=(js+1)%s;
-        jp=(jp-1+s)%s;
-        var pjs=this.curveVertices[js];
-        var pjp=this.curveVertices[jp];
-        var pjs0=this.curveVertices[js0];
-        var pjp0=this.curveVertices[jp0];
-        totaldistance+=pjs.distanceTo(pjs0)+pjp.distanceTo(pjp0);
-        if(totaldistance<le){
-            level++;
-            arrayVertices.push(js);
-            arrayVertices.unshift(jp);
+    if(this.isclosed){
+        while(true){   
+            var js0=js;
+            var jp0=jp;
+            js=(js+1)%s;
+            jp=(jp-1+s)%s;
+            var pjs=this.curveVertices[js];
+            var pjp=this.curveVertices[jp];
+            var pjs0=this.curveVertices[js0];
+            var pjp0=this.curveVertices[jp0];
+            totaldistance+=pjs.distanceTo(pjs0)+pjp.distanceTo(pjp0);
+            if(totaldistance<le){
+                level++;
+                arrayVertices.push(js);
+                arrayVertices.unshift(jp);
+            }
+            else{
+                js=js0;
+                jp=jp0;
+                break;
+            }   
         }
-        else{
-            js=js0;
-            jp=jp0;
-            break;
-        }   
     }
     //console.log("le",le);
     //console.log(totaldistance);
@@ -79,18 +86,20 @@ curveSymmetricSegment.prototype.computeLevel=function (){
     this.arrayVertices=arrayVertices;
     this.js=js;
     this.jp=jp;
-    if(level>1){
-        if(level>this.level && level<this.curveVerticesOriginal.length/4){
-           for(var i=0;i<this.curveVertices.length;i++){
-               this.curveVertices[i].copy(this.curveVerticesOriginal[i]);
-           }
-           this.doDeform=new deformed3(this.arrayVertices,this.center,this.curveVertices,ListOfCurvesObject[this.whatcurve]);
-           this.level=level;  
-           console.log(level);     
-           //console.log(this.arrayVertices);
-        }
-        else{
-           this.doDeform.updateVertices3();    
+    if(level>0){
+        if(this.isclosed){
+            if(level>this.level && level<this.curveVerticesOriginal.length/4){
+               for(var i=0;i<this.curveVertices.length;i++){
+                   this.curveVertices[i].copy(this.curveVerticesOriginal[i]);
+               }
+               this.doDeform=new deformed3(this.arrayVertices,this.center,this.curveVertices,ListOfCurvesObject[this.whatcurve]);
+               this.level=level;  
+               //console.log(level);     
+               //console.log(this.arrayVertices);
+            }
+            else{
+               this.doDeform.updateVertices3();    
+            }
         }
     }
 }
@@ -128,26 +137,14 @@ curveSymmetricSegment.prototype.updateRadius=function(){
     var t=plane.point.clone().sub(cameraposition).dot(plane.normal)/dir.dot(plane.normal);
     var point=cameraposition.add(dir.multiplyScalar(t));
     this.radius=point.clone().distanceTo(this.initialPosition);
-    if(this.level>2) this.curveVertices[this.center].set(point.x,point.y,point.z);
-    if(!checkMeshROI.checked)  this.computeLevel();
+    this.curveVertices[this.center].set(point.x,point.y,point.z);
+    if(!checkMeshROI.checked && this.isclosed)  this.computeLevel(); 
 }
 curveSymmetricSegment.prototype.goLast=function(){
     for(i=0;i<hemesh.positions.length;i++){
         hemesh.positions[i].copy(this.lastarray[i]);
     }
-    var mesh = setup.scene.getObjectByName("mesh"); 
-    ListOfCurvesObject[this.whatcurve].geometry.verticesNeedUpdate = true;   
-    if(mesh!=undefined) mesh.geometry.verticesNeedUpdate = true;   
-    var wireframe=setup.scene.getObjectByName("wireframeMesh");
-    setup.scene.remove(wireframe);
-    wireframeLines = hemesh.toWireframeGeometry();
-    var wireframe = new THREE.LineSegments(wireframeLines, new THREE.LineBasicMaterial({
-        color: 0xff2222,
-        opacity: 0.2,
-        transparent: true,
-    }));
-    wireframe.name="wireframeMesh";
-    setup.scene.add(wireframe);
+    updateRenderMeshWithoutFlag();
 }
 curveSymmetricSegment.prototype.updatePositions=function(){
     var n=L.n;
@@ -242,6 +239,9 @@ curveSymmetricSegment.prototype.updatePositions=function(){
     });
     console.log("update positions finish");
 }
+curveSymmetricSegment.prototype.intersectCurvePoints=function(){
+    
+}
 
 function deformed3(array,handle,curveVertex,curveObject){
     this.indexvertices=array;
@@ -311,6 +311,7 @@ deformed3.prototype.computeLaplacian=function(){
    }
    else{
        this.laplacian=[];
+       this.triplets=[];
    }
 }
 deformed3.prototype.updateHandle=function(pos){
@@ -372,7 +373,8 @@ deformed3.prototype.updateVertices3=function(){
             this.olaplacian[3*j+2]=-tt[2]*lx+tt[1]*ly+tt[0]*lz;
     }
     
-    var ml=this.laplacian.m/3;    
+    if(this.laplacian.length!=0) var ml=this.laplacian.m/3;    
+    else var ml=0;
     
     // creating final matrix for fitting
     var constrain=[0,this.n-1];
