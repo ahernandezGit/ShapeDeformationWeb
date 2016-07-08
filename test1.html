@@ -99,6 +99,7 @@
         var sizeGrid=document.getElementById("sizeGridBar").value;
         var LineSample = new THREE.Object3D();
         var LineStroke = new THREE.Object3D();
+        var LineCurveAdded=new THREE.Object3D();
         var gridgeometry = new THREE.Object3D();
         var checkGrid=document.getElementById("checkGrid");
         var checkMesh=document.getElementById("checkMesh");
@@ -112,6 +113,7 @@
         var raycasterCurve = new THREE.Raycaster();
         var width,height,starx,stary;   
         var points = [ ], pointSample = [ ];
+        var pointsCurveAdded=[];
         //array of grid points
         var gridPointsArray=[];
         //array of i values from the grid
@@ -158,12 +160,15 @@
         
         //for adding curve to the mesh
         var flagIntersectionMesh=false;
+        var isAddingCurve=false;
         var faceArrayOfNewCurve=[];
         var arrayLineStroke=[];
-        var isAddingCurve=false;
         var arrayEdgeExtremesPathStroke=[];
+        var faceArrayOfNewCurveBS=[];
+        var arrayLineStrokeBS=[];
+        var arrayEdgeExtremesPathStrokeBS=[];
         var tableHashVFOfNewCurve=[];
-        
+        var beginOutMesh=true;
         function mousePosition2D(event){
               var mouse=new THREE.Vector2();
               mouse.x = ( event.clientX / window.innerWidth ) * 2 - 1;
@@ -189,7 +194,7 @@
            // console.log("vector depois ", vector);
             var dir = vector.sub( setup.camera.position ).normalize();
             //console.log("direcao ", dir);  
-            var distance = - setup.camera.position.z / dir.z;
+            var distance = -setup.camera.position.z / dir.z;
             //console.log("distancia ", distance); 
             var pos = setup.camera.position.clone().add( dir.multiplyScalar( distance ) );
             //console.log(pos);   
@@ -214,46 +219,72 @@
                 if(!isDeforming) return;
                 pathCurve.updateRadius();
                 if(checkMeshROI.checked)  pathCurve.doDeform.updateVertices3();
+                if(!pathCurve.isclosed) pathCurve.doDeform.updateVertices3();
             }
             if(ModeAddCurve){
                 //CurrentPoint=mousePosition3D(event);
                 if(!isAddingCurve) return;
                 mouse=mousePosition2D(event);
                 mouseCurrent2D=mouseScreen2D(event);
+                CurrentPoint=projectToCameraPlane(event);
+                pointsCurveAdded.push(CurrentPoint);
+                var geometryLine = new THREE.Geometry();
+                geometryLine.vertices.push(LastPoint,CurrentPoint);
+                LastPoint=CurrentPoint;
+                var line = new THREE.Line( geometryLine, materialReal );
+                LineCurveAdded.add(line);
                 flagIntersectionMesh=false;    
-               //console.log(isAddingCurve);    
-               //raycasterCurve.setFromCamera( mouse, setup.camera );
+                //console.log(isAddingCurve);    
+                //raycasterCurve.setFromCamera( mouse, setup.camera );
                 //raycasterCurve.linePrecision=sizeGrid/8;
                 var mesh=setup.scene.getObjectByName("mesh");
                 var dist=mouseCurrent2D.clone().sub(mouseLast2D).length();
-                if(dist>3){
+                if(dist>1){
                     var sampleMouse=[];
                     var start=mouseLast2D;
                     var dir=mouseCurrent2D.clone().sub(mouseLast2D).normalize();
-                    var nsample=Math.ceil(dist/3);
-                    var nlength=dist/(nsample-1);
+                    if(!beginOutMesh){
+                        var nsample=Math.ceil(dist/1);
+                        var nlength=dist/(nsample-1);
+                    }
+                    else{
+                        var nsample=Math.ceil(10*dist);
+                        var nlength=dist/(nsample-1);        
+                    }
                     for(var i=0;i<nsample;i++){
                         var coef=i*nlength;
                         var ndir=dir.clone().multiplyScalar(coef);
                         sampleMouse.push(start.clone().add(ndir));
                     }
-                    for(var i=0;i<sampleMouse.length-1;i++){
-                        sampleMouse[i].x= (sampleMouse[i].x / window.innerWidth ) * 2 - 1;;
-                        sampleMouse[i].y=- (sampleMouse[i].y / window.innerHeight ) * 2 + 1;		  
-                        raycasterCurve.setFromCamera( sampleMouse[i], setup.camera );
-                        var intersects = [];
-                        intersects = raycasterCurve.intersectObject(mesh);
-                        verifyIntersectRay(intersects);
-                    }
-
-                    raycasterCurve.setFromCamera( mouse, setup.camera );
+                    
+                        for(var i=0;i<sampleMouse.length-1;i++){
+                            
+                                sampleMouse[i].x= (sampleMouse[i].x / window.innerWidth ) * 2 - 1;;
+                                sampleMouse[i].y=- (sampleMouse[i].y / window.innerHeight ) * 2 + 1;
+                                raycasterCurve.setFromCamera( sampleMouse[i], setup.camera );
+                                var intersects = [];
+                                intersects = raycasterCurve.intersectObject(mesh);
+                            if(!beginOutMesh){
+                                verifyIntersectRay(intersects);
+                            }
+                            else{
+                                verifyIntersectRay2(intersects);
+                            }
+                        }
+                        raycasterCurve.setFromCamera( mouse, setup.camera );
                 }
                 else{
                     raycasterCurve.setFromCamera( mouse, setup.camera );    
+                    
                 }
                 var intersects = raycasterCurve.intersectObject(mesh);   
-                //console.log(intersects.length);
-                verifyIntersectRay(intersects);
+                if(!beginOutMesh){
+                    //console.log(intersects.length);
+                    verifyIntersectRay(intersects);
+                }
+                else{
+                    verifyIntersectRay2(intersects);
+                }
                 mouseLast2D.copy(mouseCurrent2D);    
                 //var dist=mouseCurrent2D.clone().sub(mouseLast2D).length();
                 
@@ -284,8 +315,26 @@
                      //computing parallel plane where translate the vector
                      plane=new planeToDeforming(setup.camera.getWorldDirection(),pointToEdit.x,pointToEdit.y,pointToEdit.z,indexPointToEdit);
                      
-                     pathCurve=new curveSymmetricSegment(indexPointEditInCurve,ListOfCurvesGeometry[indexCurvetoEdit].vertices.slice(0,-1),indexCurvetoEdit);
+                     var ll=ListOfCurvesGeometry[indexCurvetoEdit].vertices.length;
+                     var isclosed=ListOfCurvesGeometry[indexCurvetoEdit].vertices[ll-1].equals(ListOfCurvesGeometry[indexCurvetoEdit].vertices[0]);
+                     
+                     if(isclosed){
+                        pathCurve=new curveSymmetricSegment(indexPointEditInCurve,ListOfCurvesGeometry[indexCurvetoEdit].vertices.slice(0,-1),indexCurvetoEdit);
+                     }
+                     else{
+                        pathCurve=new curveSymmetricSegment(indexPointEditInCurve,ListOfCurvesGeometry[indexCurvetoEdit].vertices.slice(),indexCurvetoEdit);
+                     }
                      if(checkMeshROI.checked)  pathCurve.setFixedROI(7);
+                     if(!pathCurve.isclosed) {
+                         var r=pathCurve.curveVertices.length;
+                         var arrayp=[];
+                         for(var i=0;i<r;i++){
+                             arrayp.push(i);
+                         }
+                         pathCurve.arrayVertices=arrayp;
+                         pathCurve.doDeform=new deformed3(arrayp,pathCurve.center,pathCurve.curveVertices,ListOfCurvesObject[pathCurve.whatcurve]);
+                         this.level=3;
+                     }
                      //arrayPathCurve=[];
                  }
             }
@@ -297,7 +346,13 @@
                     mouse=mousePosition2D(event);
                     faceArrayOfNewCurve=[];
                     raycasterCurve.setFromCamera( mouse, setup.camera );
-                    
+                    var mesh=setup.scene.getObjectByName("mesh");
+                    var intersects = raycasterCurve.intersectObject(mesh);   
+                    if(intersects.length!=0) beginOutMesh=false;
+                    console.log(beginOutMesh);
+                    setup.scene.add(LineCurveAdded);
+                    LastPoint=projectToCameraPlane(event);
+                    pointsCurveAdded.push(LastPoint);  
                 //}
             }
         }
@@ -308,6 +363,7 @@
                  //console.log(points);
                  Resample(points);
                  setup.scene.remove( LineStroke );
+                 dispose3(LineStroke);
                  createGrid();
                  drawGrid(true);
                  GrowingFeed();
@@ -318,8 +374,12 @@
                    fixBoundaryPoints();
                    createInicialMesh();     
                    inflationFunction3();
+                   ModeCurveDeformation=false;     
                    ModeDrawInitialCurve=false;
-                   ModeFibermesh=true;
+                   ModeDebug=false;
+                   ModeAddCurve=false;
+                   ModeChangeType=false;
+                   ModeFibermesh=true;  
                    OtherMouseControls();     
                  }
                  else{     
@@ -329,18 +389,24 @@
                  }
             }
             if(ModeCurveDeformation){
+                startButtonF();
                 if(!isDeforming) return;
                 pathCurve.updatePositions();
                 setTimeout(updateRenderMesh,100);
                 isDeforming=false;
                 radiusROI=sizeGrid/2;
-                startButtonF();
             }
             if(ModeAddCurve){
+                startButtonF();
                 if(!isAddingCurve) return;
                 isAddingCurve=false;
+                setup.scene.remove( LineCurveAdded );
+                dispose3(LineCurveAdded);
+                LineCurveAdded=new THREE.Object3D();
+                pointsCurveAdded=[];
+                concatBackSide();
                 var otro=projectCurve();
-                var tempGeo=new THREE.Geometry();
+                /*var tempGeo=new THREE.Geometry();
                 var pointGeo=new THREE.Geometry();
                 
                 var pointmaterial = new THREE.PointsMaterial({color: 0x27B327, size: 10.0, sizeAttenuation: false, alphaTest: 0.5 });
@@ -349,7 +415,7 @@
                    pointGeo.vertices.push(otro[i]);    
                 }
                 
-                tempGeo.vertices=arrayLineStroke;
+                //tempGeo.vertices=arrayLineStroke;
                 var particlesC=setup.scene.getObjectByName("pPoints"); 
                 if(particlesC!=undefined){
                     setup.scene.remove( particlesC );
@@ -357,17 +423,21 @@
 
                 particlesC = new THREE.Points( pointGeo, pointmaterial );
                 particlesC.name="pPoints";
-                var tempLine=new THREE.Line(tempGeo,materialGrid2D);
-                tempLine.name="LineStroke";
-                setup.scene.add(tempLine);
+                //var tempLine=new THREE.Line(tempGeo,materialGrid2D);
+                //tempLine.name="LineStroke";
+                //setup.scene.add(tempLine);
                 setup.scene.add( particlesC );
+                */
                 updateRenderMeshWithoutFlag();
+                //relaxingVertices(curveIndex)
                 //faceArrayOfNewCurve=[];
                 arrayLineStroke=[];
                 arrayEdgeExtremesPathStroke=[];
                 tableHashVFOfNewCurve=[];
+                beginOutMesh=true;
+                //faceArrayOfNewCurve=[];
                 console.log("finish up");
-                startButtonF();
+                
             }
         }
         
@@ -382,6 +452,9 @@
               gridI=[];
               gridPointsArray=[];
               ptd=[];
+              dispose3(LineSample);
+              dispose3(LineStroke);
+              dispose3(gridgeometry);
               LineSample = new THREE.Object3D();
               LineStroke = new THREE.Object3D();
               gridgeometry = new THREE.Object3D();
@@ -403,6 +476,7 @@
               arrayPathCurve=[];
               arrayLineStroke=[];
               pathCurve={};
+              plane=new planeToDeforming(setup.camera.getWorldDirection(),0,0,0);
               if(ModeFibermesh){
                   //setup.camera=new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 1, 1000);
                   setup.controls.reset();
@@ -417,8 +491,17 @@
             
               setup.controls.enabled=false;
               ListOfCurves=[];
+              for(var i=0;i<ListOfCurvesGeometry.length;i++){
+                  ListOfCurvesGeometry[i].dispose();
+                  dispose3(ListOfCurvesObject[i]);
+              }
               ListOfCurvesGeometry=[];
               ListOfCurvesObject=[];
+            
+              flagIntersectionMesh=false;
+              faceArrayOfNewCurve=[];
+              arrayEdgeExtremesPathStroke=[];
+              tableHashVFOfNewCurve=[];
               //FirstMesh=true;
               render();
          }
